@@ -521,8 +521,6 @@ class TextBlkItem(QGraphicsTextItem):
 
             fmt.setForeground(QColor(*self.fontformat.frgb))
             cursor.mergeCharFormat(fmt)
-
-            print(f"Created gradient pixmap for {self.idx} with angle {self.fontformat.gradient_angle} and size {self.fontformat.gradient_size} at {self.pos()}")
         else:
             option.state = QStyle.State_None
             super().paint(painter, option, widget)

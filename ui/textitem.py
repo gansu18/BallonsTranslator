@@ -4,7 +4,9 @@ from typing import List, Union, Tuple
 
 from qtpy.QtWidgets import QGraphicsItem, QWidget, QGraphicsSceneHoverEvent, QGraphicsTextItem, QStyleOptionGraphicsItem, QStyle, QGraphicsSceneMouseEvent
 from qtpy.QtCore import Qt, QRect, QRectF, QPointF, Signal, QSizeF
-from qtpy.QtGui import QGradient, QKeyEvent, QFont, QTextCursor, QPixmap, QPainterPath, QTextDocument, QInputMethodEvent, QPainter, QPen, QColor, QTextCursor, QTextCharFormat, QTextDocument
+from qtpy.QtGui import (QGradient, QKeyEvent, QFont, QTextCursor, QPixmap, QPainterPath, QTextDocument, 
+                       QInputMethodEvent, QPainter, QPen, QColor, QTextCharFormat, QTextDocument, QLinearGradient, 
+                       QBrush, QPalette, QAbstractTextDocumentLayout)
 
 from utils.textblock import TextBlock, FontFormat, TextAlignment, LineSpacingType
 from utils.imgproc_utils import xywh2xyxypoly, rotate_polygons
@@ -467,10 +469,63 @@ class TextBlkItem(QGraphicsTextItem):
             pen = QPen(TEXTRECT_SHOW_COLOR, 3 / self.get_scale(), Qt.PenStyle.SolidLine)
             painter.setPen(pen)
             painter.drawRect(self.unpadRect(br))
-        
         painter.restore()
-        option.state = QStyle.State_None
-        super().paint(painter, option, widget)
+
+        if self.fontformat.gradient_enabled:
+            # Paint text to a temporary pixmap first
+            pixmap = QPixmap(br.size().toSize())
+            pixmap.fill(Qt.GlobalColor.transparent)
+            temp_painter = QPainter(pixmap)
+            temp_painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
+            
+            # Draw text in white
+            doc = self.document()
+            temp_painter.translate(doc.documentMargin(), doc.documentMargin())
+            cursor = QTextCursor(doc)
+            cursor.select(QTextCursor.SelectionType.Document)
+            fmt = cursor.charFormat()
+            fmt.setForeground(Qt.GlobalColor.white)
+            cursor.mergeCharFormat(fmt)
+            doc.drawContents(temp_painter)
+            temp_painter.end()
+
+            # Create gradient
+            gradient = QLinearGradient()
+            angle = self.fontformat.gradient_angle
+            rad = math.radians(angle)
+            dx = math.cos(rad)
+            dy = math.sin(rad)
+            
+            # Set gradient points with size adjustment
+            rect = br
+            center = rect.center()
+            radius = max(rect.width(), rect.height()) * self.fontformat.gradient_size
+            gradient.setStart(center.x() - dx * radius, center.y() - dy * radius)
+            gradient.setFinalStop(center.x() + dx * radius, center.y() + dy * radius)
+            
+            # Set gradient colors
+            start_color = QColor(*self.fontformat.gradient_start_color)
+            end_color = QColor(*self.fontformat.gradient_end_color)
+            gradient.setColorAt(0, start_color)
+            gradient.setColorAt(1, end_color)
+
+            # Paint the gradient using the text as a mask
+            painter.save()
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+            painter.setBrush(QBrush(gradient))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawPixmap(br.topLeft(), pixmap)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+            painter.drawRect(br)
+            painter.restore()
+
+            fmt.setForeground(QColor(*self.fontformat.frgb))
+            cursor.mergeCharFormat(fmt)
+
+            print(f"Created gradient pixmap for {self.idx} with angle {self.fontformat.gradient_angle} and size {self.fontformat.gradient_size} at {self.pos()}")
+        else:
+            option.state = QStyle.State_None
+            super().paint(painter, option, widget)
 
     def startEdit(self, pos: QPointF = None) -> None:
         self.pre_editing = False
@@ -600,6 +655,12 @@ class TextBlkItem(QGraphicsTextItem):
         fontformat.bold = font.bold()
         fontformat.underline = font.underline()
         fontformat.italic = font.italic()
+        # Preserve gradient settings
+        fontformat.gradient_enabled = self.fontformat.gradient_enabled
+        fontformat.gradient_start_color = self.fontformat.gradient_start_color
+        fontformat.gradient_end_color = self.fontformat.gradient_end_color
+        fontformat.gradient_angle = self.fontformat.gradient_angle
+        fontformat.gradient_size = self.fontformat.gradient_size
         return fontformat
 
     def set_fontformat(self, ffmat: FontFormat, set_char_format=False, set_stroke_width=True, set_effect=True):
@@ -656,7 +717,18 @@ class TextBlkItem(QGraphicsTextItem):
         if ffmat.vertical:
             self.setLetterSpacing(ffmat.letter_spacing)
         self.setLineSpacing(ffmat.line_spacing)
+        
+        # Preserve gradient properties
+        self.fontformat.gradient_enabled = ffmat.gradient_enabled
+        self.fontformat.gradient_start_color = ffmat.gradient_start_color
+        self.fontformat.gradient_end_color = ffmat.gradient_end_color
+        self.fontformat.gradient_angle = ffmat.gradient_angle
+        self.fontformat.gradient_size = ffmat.gradient_size
+        
         self.fontformat.merge(ffmat)
+        
+        if self.fontformat.gradient_enabled:
+            self.update()
 
     def updateBlkFormat(self):
         fmt = self.get_fontformat()

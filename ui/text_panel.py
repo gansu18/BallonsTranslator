@@ -2,7 +2,7 @@ import copy
 import sys
 from typing import List
 
-from qtpy.QtWidgets import QLineEdit, QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame, QFontComboBox, QApplication, QPushButton, QLabel
+from qtpy.QtWidgets import QLineEdit, QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame, QFontComboBox, QApplication, QPushButton, QLabel, QGroupBox, QCheckBox, QSlider
 from qtpy.QtCore import Signal, Qt
 from qtpy.QtGui import QFocusEvent, QMouseEvent, QTextCursor, QKeyEvent
 
@@ -420,6 +420,60 @@ class FontFormatPanel(Widget):
         self.sourceBtn = TextCheckerLabel(self.tr("Source"))
         self.transBtn = TextCheckerLabel(self.tr("Translation"))
 
+        # Add gradient controls
+        self.gradientGroup = QGroupBox(self.tr("Gradient"), parent=self)
+        gradientLayout = QVBoxLayout(self.gradientGroup)
+        gradientLayout.setContentsMargins(10, 10, 10, 10)
+        gradientLayout.setSpacing(5)
+        
+        # Enable gradient checkbox
+        self.gradientEnableBox = QCheckBox(self.tr("Enable Gradient"), parent=self.gradientGroup)
+        self.gradientEnableBox.stateChanged.connect(lambda state: self.on_param_changed('gradient_enabled', state == Qt.CheckState.Checked.value))
+        gradientLayout.addWidget(self.gradientEnableBox)
+
+        # Start color picker
+        startColorLayout = QHBoxLayout()
+        startColorLayout.addWidget(QLabel(self.tr("Start Color:"), parent=self.gradientGroup))
+        self.gradientStartColorPicker = ColorPickerLabel(parent=self.gradientGroup)
+        self.gradientStartColorPicker.colorChanged.connect(self.onGradientStartColorChanged)
+        self.gradientStartColorPicker.changingColor.connect(self.changingColor)
+        startColorLayout.addWidget(self.gradientStartColorPicker)
+        gradientLayout.addLayout(startColorLayout)
+
+        # End color picker
+        endColorLayout = QHBoxLayout()
+        endColorLayout.addWidget(QLabel(self.tr("End Color:"), parent=self.gradientGroup))
+        self.gradientEndColorPicker = ColorPickerLabel(parent=self.gradientGroup)
+        self.gradientEndColorPicker.colorChanged.connect(self.onGradientEndColorChanged)
+        self.gradientEndColorPicker.changingColor.connect(self.changingColor)
+        endColorLayout.addWidget(self.gradientEndColorPicker)
+        gradientLayout.addLayout(endColorLayout)
+
+        # Angle slider
+        angleLayout = QHBoxLayout()
+        angleLayout.addWidget(QLabel(self.tr("Angle:"), parent=self.gradientGroup))
+        self.gradientAngleSlider = QSlider(Qt.Orientation.Horizontal, parent=self.gradientGroup)
+        self.gradientAngleSlider.setRange(0, 359)
+        self.gradientAngleSlider.valueChanged.connect(self.onGradientAngleChanged)
+        angleLayout.addWidget(self.gradientAngleSlider)
+        self.gradientAngleLabel = QLabel("0°", parent=self.gradientGroup)
+        self.gradientAngleLabel.setMinimumWidth(30)
+        angleLayout.addWidget(self.gradientAngleLabel)
+        gradientLayout.addLayout(angleLayout)
+
+        # Add gradient size control
+        sizeLayout = QHBoxLayout()
+        sizeLayout.addWidget(QLabel(self.tr("Size:"), parent=self.gradientGroup))
+        self.gradientSizeSlider = QSlider(Qt.Orientation.Horizontal, parent=self.gradientGroup)
+        self.gradientSizeSlider.setRange(50, 200)  # 0.5x to 2.0x
+        self.gradientSizeSlider.setValue(100)  # Default 1.0x
+        self.gradientSizeSlider.valueChanged.connect(self.onGradientSizeChanged)
+        sizeLayout.addWidget(self.gradientSizeSlider)
+        self.gradientSizeLabel = QLabel("1.0x", parent=self.gradientGroup)
+        self.gradientSizeLabel.setMinimumWidth(40)
+        sizeLayout.addWidget(self.gradientSizeLabel)
+        gradientLayout.addLayout(sizeLayout)
+
         FONTFORMAT_SPACING = 6
 
         vl0 = QVBoxLayout()
@@ -466,6 +520,7 @@ class FontFormatPanel(Widget):
         self.vlayout.addLayout(hl2)
         self.vlayout.addLayout(hl3)
         self.vlayout.addLayout(hl4)
+        self.vlayout.addWidget(self.gradientGroup)
         self.vlayout.setContentsMargins(7, 0, 7, 0)
         self.vlayout.setSpacing(0)
 
@@ -549,6 +604,16 @@ class FontFormatPanel(Widget):
         self.formatBtnGroup.underlineBtn.setChecked(font_format.underline)
         self.formatBtnGroup.italicBtn.setChecked(font_format.italic)
         self.alignBtnGroup.setAlignment(font_format.alignment)
+        
+        # Initialize gradient controls
+        self.gradientEnableBox.setChecked(font_format.gradient_enabled)
+        self.gradientStartColorPicker.setPickerColor(font_format.gradient_start_color)
+        self.gradientEndColorPicker.setPickerColor(font_format.gradient_end_color)
+        self.gradientAngleSlider.setValue(int(font_format.gradient_angle))
+        self.gradientAngleLabel.setText(f"{int(font_format.gradient_angle)}°")
+        self.gradientSizeSlider.setValue(int(font_format.gradient_size * 100))
+        self.gradientSizeLabel.setText(f"{font_format.gradient_size:.1f}x")
+        
         self.familybox.blockSignals(False)
         # self.texteffect_panel.set_active_format(font_format)
         self.textadvancedfmt_panel.set_active_format(font_format)
@@ -588,6 +653,10 @@ class FontFormatPanel(Widget):
                 if focus_p == self or focus_p.parentWidget() == self:
                     focus_on_fmtoptions = True
             if not focus_on_fmtoptions:
+                # Store the current text block's format before switching to global
+                if self.textblk_item is not None:
+                    # Save all format properties including gradient state
+                    self.textblk_item.fontformat = copy.deepcopy(C.active_format)
                 self.textblk_item = None
                 self.set_active_format(self.global_format, multi_select)
                 if multi_select:
@@ -598,6 +667,13 @@ class FontFormatPanel(Widget):
         else:
             if not self.restoring_textblk:
                 blk_fmt = textblk_item.get_fontformat()
+                # Preserve gradient properties from the text block's format
+                if hasattr(textblk_item.fontformat, 'gradient_enabled'):
+                    blk_fmt.gradient_enabled = textblk_item.fontformat.gradient_enabled
+                    blk_fmt.gradient_start_color = textblk_item.fontformat.gradient_start_color
+                    blk_fmt.gradient_end_color = textblk_item.fontformat.gradient_end_color
+                    blk_fmt.gradient_angle = textblk_item.fontformat.gradient_angle
+                    blk_fmt.gradient_size = textblk_item.fontformat.gradient_size
                 self.textblk_item = textblk_item
                 multi_size = not textblk_item.isEditing() and textblk_item.isMultiFontSize()
                 self.set_active_format(blk_fmt, multi_size)
@@ -608,3 +684,36 @@ class FontFormatPanel(Widget):
         self.effect_panel.fontfmt = copy.deepcopy(C.active_format)
         self.effect_panel.updatePanels()
         self.effect_panel.show()
+
+    def onGradientAngleChanged(self, value):
+        self.gradientAngleLabel.setText(f"{value}°")
+        self.on_param_changed('gradient_angle', float(value))
+
+    def onGradientStartColorChanged(self, is_valid=True):
+        self.focusOnColorDialog = False
+        if is_valid:
+            rgb = self.gradientStartColorPicker.rgb()
+            self.on_param_changed('gradient_start_color', rgb)
+
+    def onGradientEndColorChanged(self, is_valid=True):
+        self.focusOnColorDialog = False
+        if is_valid:
+            rgb = self.gradientEndColorPicker.rgb()
+            self.on_param_changed('gradient_end_color', rgb)
+
+    def onGradientSizeChanged(self, value):
+        self.gradientSizeLabel.setText(f"{value/100:.1f}x")
+        self.on_param_changed('gradient_size', value/100)
+
+    def updateGradientControls(self, fontfmt: FontFormat):
+        self.gradientEnableBox.setChecked(fontfmt.gradient_enabled)
+        self.gradientStartColorPicker.setRGB(*fontfmt.gradient_start_color)
+        self.gradientEndColorPicker.setRGB(*fontfmt.gradient_end_color)
+        self.gradientAngleSlider.setValue(int(fontfmt.gradient_angle))
+        self.gradientAngleLabel.setText(f"{int(fontfmt.gradient_angle)}°")
+        self.gradientSizeSlider.setValue(int(fontfmt.gradient_size * 100))
+        self.gradientSizeLabel.setText(f"{fontfmt.gradient_size:.1f}x")
+
+    def updateFontFormatPanel(self, fontfmt: FontFormat):
+        self.updateGradientControls(fontfmt)
+        self.update_text_style_label()

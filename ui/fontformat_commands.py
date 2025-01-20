@@ -159,11 +159,11 @@ def ffmt_change_line_spacing_type(param_name: str, values: float, act_ffmt: Font
     for blkitem, value in zip(blkitems, values):
         blkitem.setLineSpacingType(value, restore_cursor=restore_cursor)
 
-@font_formating(push_undostack=True)
+@font_formating()
 def handle_gradient_enabled(param_name: str, values: List[bool], act_ffmt: FontFormat, is_global: bool, blkitems: List[TextBlkItem], **kwargs):
     set_kwargs = global_default_set_kwargs if is_global else local_default_set_kwargs
     for blkitem, value in zip(blkitems, values):
-        blkitem.fontformat.gradient_enabled = value
+        blkitem.setGradientEnabled(value)
         blkitem.update()
 
 @font_formating(push_undostack=True)

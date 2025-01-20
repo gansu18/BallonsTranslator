@@ -244,6 +244,8 @@ class TextBlkItem(QGraphicsTextItem):
             cursor.setCharFormat(cfmt)
             cursor.setBlockCharFormat(cfmt)
             self.setTextCursor(cursor)
+        if self.fontformat.gradient_enabled:
+            self.setGradientEnabled(True)
         self.update_effect(font_fmt, repaint=False)
         self.setStrokeWidth(font_fmt.stroke_width, repaint_background=False)
         self.repaint_background()
@@ -471,59 +473,8 @@ class TextBlkItem(QGraphicsTextItem):
             painter.drawRect(self.unpadRect(br))
         painter.restore()
 
-        if self.fontformat.gradient_enabled:
-            # Paint text to a temporary pixmap first
-            pixmap = QPixmap(br.size().toSize())
-            pixmap.fill(Qt.GlobalColor.transparent)
-            temp_painter = QPainter(pixmap)
-            temp_painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
-            
-            # Draw text in white
-            doc = self.document()
-            temp_painter.translate(doc.documentMargin(), doc.documentMargin())
-            cursor = QTextCursor(doc)
-            cursor.select(QTextCursor.SelectionType.Document)
-            fmt = cursor.charFormat()
-            fmt.setForeground(Qt.GlobalColor.white)
-            cursor.mergeCharFormat(fmt)
-            doc.drawContents(temp_painter)
-            temp_painter.end()
-
-            # Create gradient
-            gradient = QLinearGradient()
-            angle = self.fontformat.gradient_angle
-            rad = math.radians(angle)
-            dx = math.cos(rad)
-            dy = math.sin(rad)
-            
-            # Set gradient points with size adjustment
-            rect = br
-            center = rect.center()
-            radius = max(rect.width(), rect.height()) * self.fontformat.gradient_size
-            gradient.setStart(center.x() - dx * radius, center.y() - dy * radius)
-            gradient.setFinalStop(center.x() + dx * radius, center.y() + dy * radius)
-            
-            # Set gradient colors
-            start_color = QColor(*self.fontformat.gradient_start_color)
-            end_color = QColor(*self.fontformat.gradient_end_color)
-            gradient.setColorAt(0, start_color)
-            gradient.setColorAt(1, end_color)
-
-            # Paint the gradient using the text as a mask
-            painter.save()
-            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-            painter.setBrush(QBrush(gradient))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawPixmap(br.topLeft(), pixmap)
-            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-            painter.drawRect(br)
-            painter.restore()
-
-            fmt.setForeground(QColor(*self.fontformat.frgb))
-            cursor.mergeCharFormat(fmt)
-        else:
-            option.state = QStyle.State_None
-            super().paint(painter, option, widget)
+        option.state = QStyle.State_None
+        super().paint(painter, option, widget)
 
     def startEdit(self, pos: QPointF = None) -> None:
         self.pre_editing = False
@@ -852,6 +803,37 @@ class TextBlkItem(QGraphicsTextItem):
         cursor, after_kwargs = self._before_set_ffmt(set_selected, restore_cursor)
         cfmt = QTextCharFormat()
         cfmt.setFontUnderline(value)
+        self.set_cursor_cfmt(cursor, cfmt, True)
+        self._after_set_ffmt(cursor, repaint_background, restore_cursor, **after_kwargs)
+
+    def setGradientEnabled(self, value: bool, repaint_background: bool = True, set_selected: bool = False, restore_cursor: bool = False):
+        self.fontformat.gradient_enabled = value
+        cursor, after_kwargs = self._before_set_ffmt(set_selected, restore_cursor)
+        cfmt = QTextCharFormat()
+
+        if value:
+            gradient = QLinearGradient()
+            angle = self.fontformat.gradient_angle
+            rad = math.radians(angle)
+            dx = math.cos(rad)
+            dy = math.sin(rad)
+            
+            # Set gradient points with size adjustment
+            rect = self.boundingRect()
+            center = rect.center()
+            radius = max(rect.width(), rect.height()) * self.fontformat.gradient_size
+            gradient.setStart(center.x() - dx * radius, center.y() - dy * radius)
+            gradient.setFinalStop(center.x() + dx * radius, center.y() + dy * radius)
+            
+            # Set gradient colors
+            start_color = QColor(*self.fontformat.gradient_start_color)
+            end_color = QColor(*self.fontformat.gradient_end_color)
+            gradient.setColorAt(0, start_color)
+            gradient.setColorAt(1, end_color)
+            cfmt.setForeground(gradient)
+        else:
+            cfmt.setForeground(QColor(*self.fontformat.frgb))
+
         self.set_cursor_cfmt(cursor, cfmt, True)
         self._after_set_ffmt(cursor, repaint_background, restore_cursor, **after_kwargs)
 

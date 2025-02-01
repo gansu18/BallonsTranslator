@@ -40,10 +40,8 @@ class LensCore:
             client_kwargs = {}
             if self.proxy:
                 if isinstance(self.proxy, str):
-                    # Используем параметр "proxy" для одиночного прокси
                     client_kwargs['proxy'] = self.proxy
                 elif isinstance(self.proxy, dict):
-                    # Если передаётся dict, можно создать mounts для разных схем
                     mounts = {}
                     if 'http://' in self.proxy:
                         mounts["http://"] = httpx.HTTPTransport(proxy=self.proxy['http://'])
@@ -278,7 +276,7 @@ class OCRLensAPI(OCRBase):
             try:
                 params['delay'] = float(params['delay'])
             except (ValueError, TypeError):
-                params['delay'] = 1.0  # Значение по умолчанию
+                params['delay'] = 1.0  
         super().__init__(**params)
         self.api = LensAPI(proxy=self.proxy)
         self.last_request_time = 0

@@ -47,6 +47,7 @@ class TextBlkItem(QGraphicsTextItem):
         self.under_ctrl = False
         self.draw_rect = show_rect
         self._display_rect: QRectF = QRectF(0, 0, 1, 1)
+        self.old_ffmt_values = None
         
         self.idx = idx
         
@@ -243,7 +244,7 @@ class TextBlkItem(QGraphicsTextItem):
             self.setTextCursor(cursor)
         if self.fontformat.gradient_enabled:
             self.setGradientEnabled(True)
-        self.update_effect(font_fmt, repaint=False)
+        self.setShadow(font_fmt, repaint=False)
         self.setStrokeWidth(font_fmt.stroke_width, repaint_background=False)
         self.repaint_background()
 
@@ -614,6 +615,7 @@ class TextBlkItem(QGraphicsTextItem):
         return fontformat
 
     def set_fontformat(self, ffmat: FontFormat, set_char_format=False, set_stroke_width=True, set_effect=True):
+        self.repainting = True
         if self.fontformat.vertical != ffmat.vertical:
             self.setVertical(ffmat.vertical)
 
@@ -654,9 +656,10 @@ class TextBlkItem(QGraphicsTextItem):
         self.stroke_qcolor = QColor(*ffmat.stroke_color())
 
         if set_effect:
-            self.update_effect(ffmat)
+            self.setShadow(ffmat, repaint=False)
         if set_stroke_width:
-            self.setStrokeWidth(ffmat.stroke_width)
+            self.setStrokeWidth(ffmat.stroke_width, repaint_background=False)
+        self.setOpacity(ffmat.opacity)
         
         alignment_qt_flag = [Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignCenter, Qt.AlignmentFlag.AlignRight][ffmat.alignment]
         doc = self.document()
@@ -679,6 +682,10 @@ class TextBlkItem(QGraphicsTextItem):
         
         if self.fontformat.gradient_enabled:
             self.update()
+
+        self.repainting = False
+        if set_effect or set_stroke_width:
+            self.repaint_background()
 
     def updateBlkFormat(self):
         fmt = self.get_fontformat()
@@ -984,9 +991,7 @@ class TextBlkItem(QGraphicsTextItem):
                 break
         return char_fmts
 
-    def update_effect(self, fmt: FontFormat, repaint=True):
-        self.setOpacity(fmt.opacity)
-        self.fontformat.opacity = fmt.opacity
+    def setShadow(self, fmt: FontFormat, repaint=True):
         self.fontformat.shadow_radius = fmt.shadow_radius
         self.fontformat.shadow_strength = fmt.shadow_strength
         self.fontformat.shadow_color = fmt.shadow_color
@@ -995,6 +1000,23 @@ class TextBlkItem(QGraphicsTextItem):
             self.setPadding(self.layout.max_font_size(to_px=True))
         if repaint:
             self.repaint_background()
+
+    def setBGAttribute(self, attr_name: str, value, repaint=True):
+        setattr(self.fontformat, attr_name, value)
+        if repaint:
+            self.repaint_background()
+            self.update()
+
+    def setGradientAttribute(self, attr_name: str, value):
+        self.old_ffmt_values = {}
+        self.old_ffmt_values[attr_name] = self.fontformat[attr_name]
+        setattr(self.fontformat, attr_name, value)
+        self.setGradientEnabled(self.fontformat.gradient_enabled)
+        self.old_ffmt_values = None
+
+    def setOpacity(self, opacity: float):
+        super().setOpacity(opacity)
+        self.fontformat.opacity = opacity
 
     def setPlainTextAndKeepUndoStack(self, text: str):
         cursor = QTextCursor(self.document())

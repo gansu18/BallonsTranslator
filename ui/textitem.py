@@ -636,7 +636,11 @@ class TextBlkItem(QGraphicsTextItem):
 
         self.document().setDefaultFont(font)
         format.setFont(font)
-        format.setForeground(QColor(*ffmat.foreground_color()))
+        if ffmat.gradient_enabled:
+            gradient = self.get_text_gradient(ffmat)
+            format.setForeground(gradient)
+        else:
+            format.setForeground(QColor(*ffmat.foreground_color()))
         if not ffmat.bold:
             format.setFontWeight(fweight)
         format.setFontItalic(ffmat.italic)
@@ -816,32 +820,37 @@ class TextBlkItem(QGraphicsTextItem):
         self.fontformat.gradient_enabled = value
         cursor, after_kwargs = self._before_set_ffmt(set_selected, restore_cursor)
         cfmt = QTextCharFormat()
-
         if value:
-            gradient = QLinearGradient()
-            angle = self.fontformat.gradient_angle
-            rad = math.radians(angle)
-            dx = math.cos(rad)
-            dy = math.sin(rad)
-            
-            # Set gradient points with size adjustment
-            rect = self.boundingRect()
-            center = rect.center()
-            radius = max(rect.width(), rect.height()) * self.fontformat.gradient_size
-            gradient.setStart(center.x() - dx * radius, center.y() - dy * radius)
-            gradient.setFinalStop(center.x() + dx * radius, center.y() + dy * radius)
-            
-            # Set gradient colors
-            start_color = QColor(*self.fontformat.gradient_start_color)
-            end_color = QColor(*self.fontformat.gradient_end_color)
-            gradient.setColorAt(0, start_color)
-            gradient.setColorAt(1, end_color)
+            gradient = self.get_text_gradient()
             cfmt.setForeground(gradient)
         else:
             cfmt.setForeground(QColor(*self.fontformat.frgb))
 
         self.set_cursor_cfmt(cursor, cfmt, True)
         self._after_set_ffmt(cursor, repaint_background, restore_cursor, **after_kwargs)
+
+    def get_text_gradient(self, fontformat: FontFormat = None):
+        gradient = QLinearGradient()
+        if fontformat is None:
+            fontformat = self.fontformat
+        angle = fontformat.gradient_angle
+        rad = math.radians(angle)
+        dx = math.cos(rad)
+        dy = math.sin(rad)
+        
+        # Set gradient points with size adjustment
+        rect = self.boundingRect()
+        center = rect.center()
+        radius = max(rect.width(), rect.height()) * fontformat.gradient_size
+        gradient.setStart(center.x() - dx * radius, center.y() - dy * radius)
+        gradient.setFinalStop(center.x() + dx * radius, center.y() + dy * radius)
+        
+        # Set gradient colors
+        start_color = QColor(*fontformat.gradient_start_color)
+        end_color = QColor(*fontformat.gradient_end_color)
+        gradient.setColorAt(0, start_color)
+        gradient.setColorAt(1, end_color)
+        return gradient
 
     def setLineSpacing(self, value: float, repaint_background: bool = True, set_selected: bool = False, restore_cursor: bool = False):
         self.is_formatting = True

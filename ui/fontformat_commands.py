@@ -38,7 +38,7 @@ def wrap_fntformat_input(values: str, blkitems: List[TextBlkItem], is_global: bo
     else:
         if not isinstance(blkitems, List):
             blkitems = [blkitems]
-        values = [values] * len(blkitems)
+    values = [values] * len(blkitems)
     return blkitems, values
 
 def font_formating(push_undostack: bool = False):

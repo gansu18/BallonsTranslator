@@ -84,13 +84,13 @@ class TextGradientGroup(QGroupBox):
         self.on_param_changed = on_param_changed
 
         self.start_picker = SmallColorPickerLabel(self, param_name='gradient_start_color')
-        start_picker_label = SmallParamLabel(self.tr('Start Color'))
+        start_picker_label = SmallParamLabel(self.tr('Start Color'), alignment=Qt.AlignmentFlag.AlignCenter)
         start_picker_layout = QHBoxLayout()
         start_picker_layout.addWidget(start_picker_label)
         start_picker_layout.addWidget(self.start_picker)
 
         self.end_picker = SmallColorPickerLabel(self, param_name='gradient_end_color')
-        end_picker_label = SmallParamLabel(self.tr('End Color'))
+        end_picker_label = SmallParamLabel(self.tr('End Color'), alignment=Qt.AlignmentFlag.AlignCenter)
         end_picker_layout = QHBoxLayout()
         end_picker_layout.addWidget(end_picker_label)
         end_picker_layout.addWidget(self.end_picker)

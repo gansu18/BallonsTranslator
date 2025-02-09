@@ -1,5 +1,5 @@
 name: 漏洞反馈
-title: "BUG:" # 默认标题
+title: "漏洞反馈:" # 默认标题
 description: 报告一个漏洞
 labels: [bug]
 body:
@@ -27,6 +27,10 @@ body:
         请提供 BallonsTranslator 的版本信息。请复制控制台显示的以下内容（如果信息消失，请保存项目并重启程序）：
         - Python 版本及解释器路径
         - 应用版本、分支及 Commit Hash
+
+        Please provide the version information of BallonsTranslator. Copy the following details from the console (displayed at startup). If the info is lost, save the project and restart the program:
+        - Python version and interpreter path
+        - Application version, branch, and Commit Hash
       placeholder: |
         示例:
         py version: 3.10.9 (tags/v3.10.9:...)
@@ -45,48 +49,51 @@ body:
     attributes:
       value: |
         ### 受影响的模块
-        如果问题与特定模块相关，请勾选下列选项（可多选）:
-  - type: checkboxes
+        如果问题与特定模块相关，请选择相关项（如果不适用，请选择“无”）:
+  - type: dropdown
     attributes:
       label: 文本检测
       options:
-        - label: ctd
-        - label: stariver_ocr
-  - type: checkboxes
+        - "无"
+        - ctd
+        - stariver_ocr
+  - type: dropdown
     attributes:
       label: OCR
       options:
-        - label: google_lens
-        - label: manga_ocr
-        - label: mit32px
-        - label: mit48px_ctc
-        - label: mit48px
-        - label: none ocr
-        - label: stariver_ocr
-        - label: windows ocr
-  - type: checkboxes
+        - "无"
+        - google_lens
+        - manga_ocr
+        - mit32px
+        - mit48px_ctc
+        - mit48px
+        - stariver_ocr
+        - windows ocr
+  - type: dropdown
     attributes:
       label: Inpaint
       options:
-        - label: opencv-tela
-        - label: patchmatch
-        - label: aot
-        - label: lama_mpe
-        - label: lama_large_512px
-  - type: checkboxes
+        - "无"
+        - opencv-tela
+        - patchmatch
+        - aot
+        - lama_mpe
+        - lama_large_512px
+  - type: dropdown
     attributes:
       label: 翻译器
       options:
-        - label: Baidu
-        - label: Caiyun
-        - label: ChatGPT
-        - label: ChatGPT_exp
-        - label: DeepL
-        - label: DeepL Free
-        - label: DeepLX API
-        - label: google
-        - label: Papago
-        - label: Sakura
+        - "无"
+        - Baidu
+        - Caiyun
+        - ChatGPT
+        - ChatGPT_exp
+        - DeepL
+        - DeepL Free
+        - DeepLX API
+        - google
+        - Papago
+        - Sakura
   - type: textarea
     attributes:
       label: 屏幕截图

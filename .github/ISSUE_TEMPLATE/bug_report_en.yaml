@@ -45,48 +45,51 @@ body:
     attributes:
       value: |
         ### Affected Modules
-        If your issue is related to specific modules, please select all that apply:
-  - type: checkboxes
+        If your issue is related to specific modules, please select the applicable option for each category (if not applicable, choose "None"):
+  - type: dropdown
     attributes:
       label: Text Detector
       options:
-        - label: ctd
-        - label: stariver_ocr
-  - type: checkboxes
+        - "None"
+        - ctd
+        - stariver_ocr
+  - type: dropdown
     attributes:
       label: OCR
       options:
-        - label: google_lens
-        - label: manga_ocr
-        - label: mit32px
-        - label: mit48px_ctc
-        - label: mit48px
-        - label: none ocr
-        - label: stariver_ocr
-        - label: windows ocr
-  - type: checkboxes
+        - "None"
+        - google_lens
+        - manga_ocr
+        - mit32px
+        - mit48px_ctc
+        - mit48px
+        - stariver_ocr
+        - windows ocr
+  - type: dropdown
     attributes:
       label: Inpaint
       options:
-        - label: opencv-tela
-        - label: patchmatch
-        - label: aot
-        - label: lama_mpe
-        - label: lama_large_512px
-  - type: checkboxes
+        - "None"
+        - opencv-tela
+        - patchmatch
+        - aot
+        - lama_mpe
+        - lama_large_512px
+  - type: dropdown
     attributes:
       label: Translator
       options:
-        - label: Baidu
-        - label: Caiyun
-        - label: ChatGPT
-        - label: ChatGPT_exp
-        - label: DeepL
-        - label: DeepL Free
-        - label: DeepLX API
-        - label: google
-        - label: Papago
-        - label: Sakura
+        - "None"
+        - Baidu
+        - Caiyun
+        - ChatGPT
+        - ChatGPT_exp
+        - DeepL
+        - DeepL Free
+        - DeepLX API
+        - google
+        - Papago
+        - Sakura
   - type: textarea
     attributes:
       label: Screenshot

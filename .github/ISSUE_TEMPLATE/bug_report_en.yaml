@@ -96,6 +96,7 @@ body:
       label: Logs
       description: |
         Paste the log output here (it will be auto-formatted as a code block).
+      render: shell
   - type: textarea
     attributes:
       label: Additional Information

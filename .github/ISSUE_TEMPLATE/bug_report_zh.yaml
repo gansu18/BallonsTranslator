@@ -100,6 +100,7 @@ body:
       label: 日志
       description: |
         请复制粘贴日志内容（内容会自动格式化为代码块）。
+      render: shell
   - type: textarea
     attributes:
       label: 其他信息

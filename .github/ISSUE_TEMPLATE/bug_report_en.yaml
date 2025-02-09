@@ -11,10 +11,10 @@ body:
         🚨 **Please follow these steps before creating an issue** 🚨
 
         1. Ensure your repository is up-to-date by running one of the following commands:
-           - `.\git\bin\git.exe pull`
-           - `.\PortableGit\bin\git.exe pull`
-           - `git pull`
-           
+          - `.\git\bin\git.exe pull`
+          - `.\PortableGit\bin\git.exe pull`
+          - `git pull`
+          
         2. Check if a similar issue already exists.
 
         3. Provide as much detail as possible, including crash logs (if applicable).

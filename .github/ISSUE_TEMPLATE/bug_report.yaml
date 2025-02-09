@@ -23,11 +23,11 @@ body:
     attributes:
       label: 版本信息 / Version Info
       description: |
-        请提供 BallonsTranslator 的版本信息。你可以复制下面的示例文本（或附上截图），确保包含以下内容：
+        请提供 BallonsTranslator 的版本信息。请复制控制台显示的以下内容（如果信息消失，请保存项目并重启程序）:
         - Python 版本及解释器路径
         - 应用版本、分支及 Commit Hash
 
-        Please provide the version information of BallonsTranslator. You must copy the following fields from the console (which is open during the program). Usually they are written when starting. If the context of the console erased this information, save the project, and restart the program:
+        Please provide the version information of BallonsTranslator. Copy the following fields from the console (displayed at startup). If the info is lost, save the project and restart the program:
         - Python version and interpreter path
         - Application version, branch, and Commit Hash
       placeholder: |

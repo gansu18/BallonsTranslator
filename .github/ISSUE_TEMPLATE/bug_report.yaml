@@ -26,7 +26,12 @@ body:
         请提供 BallonsTranslator 的版本信息。你可以复制下面的示例文本（或附上截图），确保包含以下内容：
         - Python 版本及解释器路径
         - 应用版本、分支及 Commit Hash
+
+        Please provide the version information of BallonsTranslator. You must copy the following fields from the console (which is open during the program). Usually they are written when starting. If the context of the console erased this information, save the project, and restart the program:
+        - Python version and interpreter path
+        - Application version, branch, and Commit Hash
       placeholder: |
+        Example:
         py version: 3.10.9 (tags/v3.10.9:1dd9be6, Dec  6 2022, 20:01:21) [MSC v.1934 64 bit (AMD64)]
         py executable: G:\Ballon-translator-portable-main\venv\Scripts\python.exe
         version: 1.4.0
@@ -48,7 +53,7 @@ body:
       label: 屏幕截图 / Screenshot
       description: |
         如果可以，请附上发生错误时的屏幕截图。你可以直接拖拽图片到文本框。
-        If possible, attach a screenshot when the error occurred.
+        If possible, attach a screenshot when the error occurred. You can simply drag and drop the image into the text box.
   
   - type: textarea
     attributes:

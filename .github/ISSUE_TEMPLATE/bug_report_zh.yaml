@@ -1,4 +1,5 @@
 name: 漏洞反馈
+title: "BUG:" # 默认标题
 description: 报告一个漏洞
 labels: [bug]
 body:
@@ -40,6 +41,52 @@ body:
       label: 问题描述
       description: |
         请详细描述问题，并提供复现步骤。
+  - type: markdown
+    attributes:
+      value: |
+        ### 受影响的模块
+        如果问题与特定模块相关，请勾选下列选项（可多选）:
+  - type: checkboxes
+    attributes:
+      label: 文本检测
+      options:
+        - label: ctd
+        - label: stariver_ocr
+  - type: checkboxes
+    attributes:
+      label: OCR
+      options:
+        - label: google_lens
+        - label: manga_ocr
+        - label: mit32px
+        - label: mit48px_ctc
+        - label: mit48px
+        - label: none ocr
+        - label: stariver_ocr
+        - label: windows ocr
+  - type: checkboxes
+    attributes:
+      label: Inpaint
+      options:
+        - label: opencv-tela
+        - label: patchmatch
+        - label: aot
+        - label: lama_mpe
+        - label: lama_large_512px
+  - type: checkboxes
+    attributes:
+      label: 翻译器
+      options:
+        - label: Baidu
+        - label: Caiyun
+        - label: ChatGPT
+        - label: ChatGPT_exp
+        - label: DeepL
+        - label: DeepL Free
+        - label: DeepLX API
+        - label: google
+        - label: Papago
+        - label: Sakura
   - type: textarea
     attributes:
       label: 屏幕截图

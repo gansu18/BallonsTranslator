@@ -1,4 +1,5 @@
 name: Bug Report
+title: "Bug Report:" # Default title
 description: Report a bug
 labels: [bug]
 body:
@@ -40,6 +41,52 @@ body:
       label: Description of the Problem
       description: |
         Please describe the bug in detail and provide reproduction steps.
+  - type: markdown
+    attributes:
+      value: |
+        ### Affected Modules
+        If your issue is related to specific modules, please select all that apply:
+  - type: checkboxes
+    attributes:
+      label: Text Detector
+      options:
+        - label: ctd
+        - label: stariver_ocr
+  - type: checkboxes
+    attributes:
+      label: OCR
+      options:
+        - label: google_lens
+        - label: manga_ocr
+        - label: mit32px
+        - label: mit48px_ctc
+        - label: mit48px
+        - label: none ocr
+        - label: stariver_ocr
+        - label: windows ocr
+  - type: checkboxes
+    attributes:
+      label: Inpaint
+      options:
+        - label: opencv-tela
+        - label: patchmatch
+        - label: aot
+        - label: lama_mpe
+        - label: lama_large_512px
+  - type: checkboxes
+    attributes:
+      label: Translator
+      options:
+        - label: Baidu
+        - label: Caiyun
+        - label: ChatGPT
+        - label: ChatGPT_exp
+        - label: DeepL
+        - label: DeepL Free
+        - label: DeepLX API
+        - label: google
+        - label: Papago
+        - label: Sakura
   - type: textarea
     attributes:
       label: Screenshot
@@ -50,7 +97,6 @@ body:
       label: Logs
       description: |
         Paste the log output here (it will be auto-formatted as a code block).
-      render: shell
   - type: textarea
     attributes:
       label: Additional Information

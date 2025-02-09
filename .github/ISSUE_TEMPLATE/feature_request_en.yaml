@@ -1,4 +1,5 @@
 name: Feature Request
+title: "Feature Request:" # Default title
 description: Propose new features or optimizations
 labels: [feature]
 body:

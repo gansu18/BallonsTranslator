@@ -50,14 +50,12 @@ body:
     attributes:
       label: Text Detector
       options:
-        - "N/A"
         - ctd
         - stariver_ocr
   - type: dropdown
     attributes:
       label: OCR
       options:
-        - "N/A"
         - google_lens
         - manga_ocr
         - mit32px
@@ -69,7 +67,6 @@ body:
     attributes:
       label: Inpaint
       options:
-        - "N/A"
         - opencv-tela
         - patchmatch
         - aot
@@ -79,7 +76,6 @@ body:
     attributes:
       label: Translator
       options:
-        - "N/A"
         - Baidu
         - Caiyun
         - ChatGPT

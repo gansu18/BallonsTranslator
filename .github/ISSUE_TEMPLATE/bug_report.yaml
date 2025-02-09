@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         ## 在开始之前 / Before you begin
-        
+
         🚨 **请勿略过说明 / Please do not skip instructions** 🚨
 
         1. 请确保在打开一个新议题之前，查找并确认不要与已有议题重复。
@@ -16,7 +16,7 @@ body:
         2. 请尽可能多地提供信息，包括崩溃日志（如果适用）。
            
            Please provide as much information as possible, including crash logs if applicable.
-  
+
   - type: textarea
     validations:
       required: true
@@ -37,7 +37,6 @@ body:
         version: 1.4.0
         branch: dev
         Commit hash: 53eee46fd7bef117a4ada9a86843c3bf6e37d953
-      render: shell
 
   - type: textarea
     validations:
@@ -47,14 +46,14 @@ body:
       description: |
         请详细描述这个漏洞，并提供复现步骤。
         Describe the bug in detail and provide reproduction steps.
-  
+
   - type: textarea
     attributes:
       label: 屏幕截图 / Screenshot
       description: |
         如果可以，请附上发生错误时的屏幕截图。你可以直接拖拽图片到文本框。
         If possible, attach a screenshot when the error occurred. You can simply drag and drop the image into the text box.
-  
+
   - type: textarea
     attributes:
       label: 日志 / Logs

@@ -6,13 +6,13 @@ body:
     attributes:
       value: |
         ## 在开始之前 / Before you begin
-        
+
         🚨 **请勿略过说明 / Please do not skip instructions** 🚨
 
         1. 请确保在打开一个新议题之前，查找并确认不要与已有议题重复。
            
            Please make sure to look for existing issues before opening a new one.
-  
+
   - type: textarea
     validations:
       required: true
@@ -33,7 +33,6 @@ body:
         version: 1.4.0
         branch: dev
         Commit hash: 53eee46fd7bef117a4ada9a86843c3bf6e37d953
-      render: shell
 
   - type: dropdown
     validations:
@@ -52,14 +51,14 @@ body:
       description: |
         请详细描述你希望添加或改进的功能。
         Describe the feature or improvement you would like to see.
-  
+
   - type: textarea
     attributes:
       label: 图片 / Pictures
       description: |
         如果可以，请附上相关示例或界面截图。你可以直接拖拽图片到文本框。
         If possible, attach relevant examples or UI screenshots. You can simply drag and drop the image into the text box.
-  
+
   - type: textarea
     attributes:
       label: 其他信息 / Additional Information

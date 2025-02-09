@@ -54,14 +54,14 @@ body:
     attributes:
       label: 文本检测
       options:
-        - "无"
+        - "无 (N/A)"
         - ctd
         - stariver_ocr
   - type: dropdown
     attributes:
       label: OCR
       options:
-        - "无"
+        - "无 (N/A)"
         - google_lens
         - manga_ocr
         - mit32px
@@ -73,7 +73,7 @@ body:
     attributes:
       label: Inpaint
       options:
-        - "无"
+        - "无 (N/A)"
         - opencv-tela
         - patchmatch
         - aot
@@ -83,7 +83,7 @@ body:
     attributes:
       label: 翻译器
       options:
-        - "无"
+        - "无 (N/A)"
         - Baidu
         - Caiyun
         - ChatGPT

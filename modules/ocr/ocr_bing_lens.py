@@ -25,7 +25,7 @@ class BingOCRCore:
         'accept': '*/*',
         'accept-language': 'ru,en;q=0.9,en-GB;q=0.8,en-US;q=0.7',
         'origin': 'https://www.bing.com',
-        'referer': 'https://www.bing.com/images/search?view=detailV2&iss=SBIUPLOADGET&sbisrc=ImgDropper', # Updated Referer
+        'referer': 'https://www.bing.com/images/search?view=detailV2&iss=SBIUPLOADGET&sbisrc=ImgDropper',
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0'
     }
 
@@ -33,7 +33,7 @@ class BingOCRCore:
         self.proxy = proxy
         self.cookie_jar = cookielib.CookieJar()
 
-    def _send_request(self, url, headers, data=None, files=None, cookies=None, follow_redirects=False): # follow_redirects теперь False по умолчанию, так как для upload нам не нужен редирект
+    def _send_request(self, url, headers, data=None, files=None, cookies=None, follow_redirects=False, timeout=10.0):
         try:
             client_kwargs = {}
             if self.proxy:
@@ -49,37 +49,37 @@ class BingOCRCore:
                         client_kwargs['mounts'] = mounts
                 else:
                     raise ValueError("Proxy must be a string or a dictionary")
-            client = httpx.Client(**client_kwargs)
+            client = httpx.Client(**client_kwargs, timeout=timeout) 
             response = client.post(url, headers=headers, data=data, files=files, cookies=cookies, follow_redirects=follow_redirects)
-            # Убираем response.raise_for_status() здесь!
-            # Проверку на ошибки и исключения делаем ВНЕ функции _send_request, если нужно
             return response
-        except httpx.HTTPError as e:
+        except httpx.TimeoutException as e:
+            raise Exception(f"Request to {url} timed out: {e}") 
+        except httpx.HTTPError as e: # Обработка HTTP ошибок остается
             raise Exception(f"HTTP error {e.response.status_code} during request to {url}: {e.response.text}")
         except Exception as e:
             raise Exception(f"Request to {url} failed: {e}")
 
-    def upload_image(self, image_path=None, image_buffer=None): # Теперь принимает image_path ИЛИ image_buffer
+    def upload_image(self, image_path=None, image_buffer=None):
         try:
-            image_base64 = None # Инициализация
+            image_base64 = None 
 
-            if image_path: # Обработка если передан путь к файлу
+            if image_path: 
                 with open(image_path, "rb") as image_file:
                     image_data = image_file.read()
                     image_base64 = base64.b64encode(image_data).decode('utf-8')
-                img = PilImage.open(image_path) # Открываем PIL Image только если есть путь к файлу
-            elif image_buffer: # Обработка если передан буфер изображения
+                img = PilImage.open(image_path) 
+            elif image_buffer: 
                 image_base64 = base64.b64encode(image_buffer).decode('utf-8')
-                img = PilImage.open(io.BytesIO(image_buffer)) # Открываем PIL Image из буфера
+                img = PilImage.open(io.BytesIO(image_buffer))
             else:
                 raise ValueError("Either image_path or image_buffer must be provided")
 
 
             width, height = img.size
-            file_size_bytes = len(image_buffer) if image_buffer else os.path.getsize(image_path) # Размер буфера или файла
+            file_size_bytes = len(image_buffer) if image_buffer else os.path.getsize(image_path)
             file_size_kb = round(file_size_bytes / 1024, 2)
-            file_name = os.path.basename(image_path) if image_path else "image_from_buffer.jpg" # Имя файла или дефолтное
-            file_extension = os.path.splitext(image_path)[1][1:].lower() if image_path else "jpg" # Расширение файла или дефолтное
+            file_name = os.path.basename(image_path) if image_path else "image_from_buffer.jpg" 
+            file_extension = os.path.splitext(image_path)[1][1:].lower() if image_path else "jpg" 
 
             sbifsz_value = f"{width}+x+{height}+%c2%b7+{file_size_kb}+kB+%c2%b7+{file_extension}"
             sbifnm_value = file_name
@@ -96,18 +96,17 @@ class BingOCRCore:
 
             upload_data = f'''{boundary_upload}\r\nContent-Disposition: form-data; name="imgurl"\r\n\r\n\r\n{boundary_upload}\r\nContent-Disposition: form-data; name="cbir"\r\n\r\nsbi\r\n{boundary_upload}\r\nContent-Disposition: form-data; name="imageBin"\r\n\r\n{image_base64}\r\n{boundary_upload}--\r\n'''
 
-            upload_response = self._send_request(upload_url, upload_headers, data=upload_data.encode('utf-8'), follow_redirects=False) # follow_redirects=False как и раньше
+            upload_response = self._send_request(upload_url, upload_headers, data=upload_data.encode('utf-8'), follow_redirects=False) 
 
-            # **Теперь проверяем код статуса явно:**
-            if upload_response.status_code == 302: # Ожидаемый редирект
+            if upload_response.status_code == 302: 
                 redirect_url = upload_response.headers.get('Location')
                 if not redirect_url:
                     raise Exception("Redirect 302 received but no Location header found.")
-            else: # Если код статуса не 302, тогда это ошибка
-                upload_response.raise_for_status() # Вызываем raise_for_status для других ошибок (4xx, 5xx)
-                redirect_url = None # На всякий случай, если вдруг дойдет сюда
+            else: 
+                upload_response.raise_for_status() 
+                redirect_url = None 
 
-            if not redirect_url: # Проверяем, получили ли URL редиректа (или если не было 302)
+            if not redirect_url:
                 raise Exception("No redirect URL received after image upload (not 302).")
 
 
@@ -137,7 +136,11 @@ class BingOCRCore:
         try:
             api_response = self._send_request(api_url, api_headers, data=api_data.encode('utf-8'), cookies=upload_cookies)
             return api_response.json()
-        except Exception as e:
+        except httpx.TimeoutException as e: 
+            raise Exception(f"OCR API request timed out: {e}") 
+        except httpx.HTTPError as e: 
+            raise Exception(f"HTTP error {e.response.status_code} during OCR API request to {api_url}: {e.response.text}")
+        except Exception as e: 
             raise Exception(f"OCR API request failed: {e}")
 
 
@@ -150,8 +153,8 @@ class BingOCR(BingOCRCore):
         ocr_json = self.get_ocr_json(image_insights_token, upload_cookies)
         return ocr_json
 
-    def scan_by_buffer(self, buffer, filename=None): # filename is optional, can be used for mime type detection if needed
-        image_insights_token, upload_cookies = self.upload_image(image_buffer=buffer) # Передаем буфер напрямую
+    def scan_by_buffer(self, buffer, filename=None): 
+        image_insights_token, upload_cookies = self.upload_image(image_buffer=buffer) 
         ocr_json = self.get_ocr_json(image_insights_token, upload_cookies)
         return ocr_json
 
@@ -164,17 +167,16 @@ class BingOCRAPI:
     def extract_text_and_coordinates(ocr_json_data):
         text_with_coords = []
         try:
-            ocr_tag = ocr_json_data['tags'][1]['actions'][0] # Assuming OCR info is in the second tag
+            ocr_tag = ocr_json_data['tags'][1]['actions'][0] 
             if ocr_tag['_type'] == 'ImageKnowledge/TextRecognitionAction':
                 regions = ocr_tag['data']['regions']
                 for region in regions:
                     for line in region['lines']:
                         line_text = line['text']
-                        # Bounding box is given in relative coordinates (0 to 1)
                         line_bbox = line['boundingBox']
-                        text_with_coords.append({"text": line_text, "boundingBox": line_bbox}) # Keep bounding box for stitching
+                        text_with_coords.append({"text": line_text, "boundingBox": line_bbox}) 
         except (KeyError, IndexError, TypeError):
-            return [] # Return empty list if no text found or structure is unexpected
+            return [] 
         return text_with_coords
 
     @staticmethod
@@ -182,7 +184,6 @@ class BingOCRAPI:
         if not text_with_coords:
             return ""
 
-        # Assuming bounding box is like {'topLeft': {'x': 0.1, 'y': 0.2}, ...}
         def get_bbox_coords(bbox):
             return bbox['topLeft']['x'], bbox['topLeft']['y'], bbox['bottomRight']['x'], bbox['bottomRight']['y']
 
@@ -197,7 +198,7 @@ class BingOCRAPI:
             y_start = bbox[1]
             text = element['text']
 
-            if current_y_start is None or abs(y_start - current_y_start) > 0.03: # Adjust threshold as needed
+            if current_y_start is None or abs(y_start - current_y_start) > 0.03: 
                 if current_line:
                     stitched_text.append(" ".join(current_line))
                     current_line = []
@@ -225,20 +226,17 @@ class BingOCRAPI:
 
         if response_method == "Full Text":
             return {
-                'full_text': BingOCRAPI.stitch_text_smart(text_with_coords), # Smart stitch for full text
-                'language': 'Unknown', # Language detection not directly available from Bing OCR in this flow
+                'full_text': BingOCRAPI.stitch_text_smart(text_with_coords), 
                 'text_with_coordinates': text_with_coords
             }
         elif response_method == "Coordinate sequence":
             return {
                 'full_text': BingOCRAPI.stitch_text_sequential(text_with_coords),
-                'language': 'Unknown',
                 'text_with_coordinates': text_with_coords
             }
-        elif response_method == "Location coordinates": # Location coordinates is also smart stitch in this context
+        elif response_method == "Location coordinates": 
             return {
                 'full_text': BingOCRAPI.stitch_text_smart(text_with_coords),
-                'language': 'Unknown',
                 'text_with_coordinates': text_with_coords
             }
         else:
@@ -250,14 +248,14 @@ def format_bing_ocr_result(result):
     if not full_text:
         formatted_result = {
             "language": result.get("language", ""),
-            "text_with_coordinates": [ # Оставим координаты, если вдруг понадобятся в дебаге, но в simplified виде
+            "text_with_coordinates": [ 
                 f"{item['text']}: {item['boundingBox']}"
                 for item in result.get("text_with_coordinates", [])
             ]
         }
         return json.dumps(formatted_result, indent=4, ensure_ascii=False)
     else:
-        return f"OCR Text: '{full_text}'" #  Упрощенный вывод - только текст
+        return f"OCR Text: '{full_text}'" 
 
 
 @register_OCR('bing_ocr')
@@ -362,8 +360,8 @@ class OCRBingAPI(OCRBase):
                 _, buffer = cv2.imencode('.jpg', img)
                 result = self.api.process_image(image_buffer=buffer.tobytes(), response_method=self.response_method)
                 if self.debug_mode:
-                    formatted_result = format_bing_ocr_result(result) # Используем новую функцию форматирования
-                    self.logger.debug(f'OCR result: {formatted_result}') # Дебаг вывод станет менее verbose
+                    formatted_result = format_bing_ocr_result(result) 
+                    self.logger.debug(f'OCR result: {formatted_result}') 
 
                 full_text = result['full_text']
                 if self.newline_handling == 'remove':
@@ -424,9 +422,9 @@ class OCRBingAPI(OCRBase):
             try:
                 param_content = float(param_content)
             except (ValueError, TypeError):
-                param_content = 1.0 # Default value
+                param_content = 1.0 
         super().updateParam(param_key, param_content)
         if param_key == 'proxy':
-            # When changing the proxy, recreate the client
-            self.api.bing_ocr.proxy = self.proxy # Update the proxy
-            self.api.bing_ocr.client = None # In BingOCRCore, client is created per request in _send_request, no need to reset explicitly.
+            
+            self.api.bing_ocr.proxy = self.proxy 
+            self.api.bing_ocr.client = None 

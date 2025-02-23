@@ -140,7 +140,7 @@ This project is heavily dependent upon [manga-image-translator](https://github.c
 
 ## OCR
 
-*  **You can find information about OCR modules [here.](doc/modules/Translators.md)**
+*  **You can find information about OCR modules [here.](doc/modules/ocr.md)**
 
 ## Inpainting
 
@@ -148,7 +148,7 @@ This project is heavily dependent upon [manga-image-translator](https://github.c
   
 ## Translators
 
-* **You can find information about Translators modules [here.](doc/modules/Translators.md)**
+* **You can find information about Translators modules [here.](doc/modules/translators.md)**
 
 ## FAQ & Misc
 * If your computer has an Nvidia GPU or Apple silicon, the program will enable hardware acceleration. 

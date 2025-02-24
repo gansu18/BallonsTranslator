@@ -104,6 +104,8 @@ Temporary module. Essentially carries the functionality of ChatGPT, but with a p
 
 *   **The following translators may require a token or API key to function:** [Caiyun](https://dashboard.caiyunapp.com/), [ChatGPT](https://platform.openai.com/playground), [Yandex](https://yandex.com/dev/translate/), [Baidu](http://developers.baidu.com/), and [DeepL](https://www.deepl.com/docs-api/api-access).
 
+---
+
 ### Paid Translators
 
 #### Baidu
@@ -167,6 +169,8 @@ Temporary module. Essentially carries the functionality of ChatGPT, but with a p
 *   **delay:** Delay in seconds between requests to the translation service. Used to control the frequency of requests.
 
 * Attention! If you previously used the [v1.5](https://translate.yandex.com/developers) version of the API, it has been closed and moved to Yandex Cloud. Therefore, if you have an old key, it will work if there are funds remaining in your balance. Once they run out, your key will become invalid.
+
+---
 
 ### Free Translators
 

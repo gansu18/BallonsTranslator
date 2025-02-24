@@ -73,7 +73,7 @@ For detailed setup instructions and using other OpenAI-compatible APIs, please r
 
 #### Text Generation WebUI (TGW)
 
-This module is recommended only for users who can easily set up their own TGW server. If you cannot, please use other translation methods.
+This module is recommended only for users who can easily set up their own [TGW](https://github.com/oobabooga/text-generation-webui) server. If you cannot, please use other translation methods.
 
 #### Sakura
 

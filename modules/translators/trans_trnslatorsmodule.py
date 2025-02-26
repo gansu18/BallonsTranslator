@@ -1,11 +1,13 @@
 from .base import *
-import translators as ts
 import os
+
+os.environ['translators_default_region'] = os.environ.get('translators_default_region', 'EN')
+
+import translators as ts
 
 @register_translator('TranslatorsPack')
 class GeneralTranslator(BaseTranslator):
     def __init__(self, lang_source, lang_target, *args, **kwargs):
-        self.default_region = os.environ.get('translators_default_region', 'EN')
         self.lang_source = lang_source
         self.lang_target = lang_target
         self.lang_map = {}  

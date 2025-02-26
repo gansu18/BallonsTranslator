@@ -8,6 +8,7 @@ import re
 import subprocess
 import pkg_resources
 from platform import platform
+import torch
 import logging
 
 BRANCH = 'dev'
@@ -144,6 +145,10 @@ def restart():
     os.execv(sys.executable, ['python'] + sys.argv)
 
 
+def zluda_available(device_name):
+    return "[ZLUDA]" in device_name
+
+
 def main():
 
     if args.debug:
@@ -153,11 +158,24 @@ def main():
 
     commit = commit_hash()
 
-    print('py version: ', sys.version)
-    print('py executable: ', sys.executable)
-    print(f'version: {VERSION}')
-    print(f'branch: {BRANCH}')
+    print('Python version: ', sys.version)
+    print('Python executable: ', sys.executable)
+    print(f'Version: {VERSION}')
+    print(f'Branch: {BRANCH}')
     print(f"Commit hash: {commit}")
+    print('Device name: ', torch.cuda.get_device_name(0))
+    print('Cuda is available: ',torch.cuda.is_available())
+    print('Cuda version: ', torch.version.cuda)
+    print('Cudnn is available: ', torch.backends.cudnn.is_available())
+    print('Cudnn version: ', torch.backends.cudnn.version())
+    print('ZLUDA is available: ', zluda_available(torch.cuda.get_device_name(0)))
+
+    if zluda_available(torch.cuda.get_device_name(0)):
+        torch.backends.cudnn.enabled = False
+        torch.backends.cuda.enable_flash_sdp(False)
+        torch.backends.cuda.enable_math_sdp(True)
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
+        torch.backends.cuda.enable_cudnn_sdp(False)
 
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
     os.chdir(APP_DIR)

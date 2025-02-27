@@ -163,19 +163,20 @@ def main():
     print(f'Version: {VERSION}')
     print(f'Branch: {BRANCH}')
     print(f"Commit hash: {commit}")
-    print('Device name: ', torch.cuda.get_device_name(0))
-    print('Cuda is available: ',torch.cuda.is_available())
-    print('Cuda version: ', torch.version.cuda)
-    print('Cudnn is available: ', torch.backends.cudnn.is_available())
-    print('Cudnn version: ', torch.backends.cudnn.version())
-    print('ZLUDA is available: ', zluda_available(torch.cuda.get_device_name(0)))
 
-    if zluda_available(torch.cuda.get_device_name(0)):
-        torch.backends.cudnn.enabled = False
-        torch.backends.cuda.enable_flash_sdp(False)
-        torch.backends.cuda.enable_math_sdp(True)
-        torch.backends.cuda.enable_mem_efficient_sdp(False)
-        torch.backends.cuda.enable_cudnn_sdp(False)
+    if hasattr(torch, 'cuda'):
+        device_name = torch.cuda.get_device_name(0)
+        print('Device name: ', device_name)
+        print('Cuda is available: ',torch.cuda.is_available())
+        print('Cuda version: ', torch.version.cuda)
+        print('ZLUDA is available: ', zluda_available(device_name))
+
+        if zluda_available(device_name):
+            torch.backends.cudnn.enabled = False
+            torch.backends.cuda.enable_flash_sdp(False)
+            torch.backends.cuda.enable_math_sdp(True)
+            torch.backends.cuda.enable_mem_efficient_sdp(False)
+            torch.backends.cuda.enable_cudnn_sdp(False)
 
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
     os.chdir(APP_DIR)

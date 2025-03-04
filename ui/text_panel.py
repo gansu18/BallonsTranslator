@@ -427,9 +427,9 @@ class FontFormatPanel(Widget):
         return self.textstyle_panel.active_text_style_label
 
     def on_param_changed(self, param_name: str, value):
-        func = FM.handle_ffmt_change.get(param_name if not param_name == "rel_font_size" else "font_size")
+        func = FM.handle_ffmt_change.get(param_name)
         func_kwargs = {}
-        if param_name == 'font_size':
+        if param_name in {'font_size', 'rel_font_size'}:
             func_kwargs['clip_size'] = True
         if self.global_mode():
             func(param_name, value, self.global_format, is_global=True, **func_kwargs)

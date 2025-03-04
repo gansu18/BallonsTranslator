@@ -950,7 +950,7 @@ class TextBlkItem(QGraphicsTextItem):
         '''
         
         cursor, after_kwargs = self._before_set_ffmt(set_selected=set_selected, restore_cursor=restore_cursor)
-
+        self.layout.relayout_on_changed = False
         if self.fontformat.stroke_width != 0:
             repaint_background = True
         if repaint_background:
@@ -962,6 +962,8 @@ class TextBlkItem(QGraphicsTextItem):
         cfmt = QTextCharFormat()
         cfmt.setFontPointSize(value)
         self.set_cursor_cfmt(cursor, cfmt, True)
+        self.layout.relayout_on_changed = True
+        self.layout.reLayoutEverything()
         if clip_size:
             self.squeezeBoundingRect(cond_on_alignment=True)
 

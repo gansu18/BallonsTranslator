@@ -161,9 +161,6 @@ class BaseModule:
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 import torch
 
-def zluda_available(device_name):
-    return "[ZLUDA]" in device_name
-
 DEFAULT_DEVICE = 'cpu'
 AVAILABLE_DEVICES = ['cpu']
 if hasattr(torch, 'cuda') and torch.cuda.is_available():

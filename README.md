@@ -183,7 +183,7 @@ Sugoi 翻译器作者: [mingshiba](https://www.patreon.com/mingshiba)
   
       这里以 windows 10 系统为例：设置 - 系统属性 - 高级系统设置 - 环境变量 - 系统变量 - 找到 path 变量
   
-      点击编辑 在最后添加 `C:\zluda\bin` 和 `%HIP_PATH_62%bin` 两项
+      点击编辑 在最后添加 `C:\zluda` 和 `%HIP_PATH_62%bin` 两项
   
    * 替换 CUDA 库的动态链接文件
   

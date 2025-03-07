@@ -169,17 +169,6 @@ AVAILABLE_DEVICES = ['cpu']
 if hasattr(torch, 'cuda') and torch.cuda.is_available():
     DEFAULT_DEVICE = 'cuda'
     AVAILABLE_DEVICES.append(DEFAULT_DEVICE)
-    device_name = torch.cuda.get_device_name(0)
-    print('Device name: ', device_name)
-    print('Cuda is available: ', torch.cuda.is_available())
-    print('Cuda version: ', torch.version.cuda)
-    print('ZLUDA is available: ', zluda_available(device_name))
-    if zluda_available(device_name):
-        torch.backends.cudnn.enabled = False
-        torch.backends.cuda.enable_flash_sdp(False)
-        torch.backends.cuda.enable_math_sdp(True)
-        torch.backends.cuda.enable_mem_efficient_sdp(False)
-        torch.backends.cuda.enable_cudnn_sdp(False)
 if hasattr(torch, 'xpu')  and torch.xpu.is_available():
     DEFAULT_DEVICE = 'xpu' if torch.xpu.is_available() else 'cpu'
     AVAILABLE_DEVICES.append(DEFAULT_DEVICE)

@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Tuple, List
 
-from .base import register_textdetectors, TextDetectorBase, TextBlock, DEFAULT_DEVICE, DEVICE_SELECTOR
+from .base import register_textdetectors, TextDetectorBase, TextBlock, DEFAULT_DEVICE, DEVICE_SELECTOR, ProjImgTrans
 from .ctd import CTDModel
 
 CTD_ONNX_PATH = 'data/models/comictextdetector.pt.onnx'
@@ -57,7 +57,7 @@ class ComicTextDetector(TextDetectorBase):
         else:
             self.model = load_ctd_model(CTD_ONNX_PATH, self.device, self.detect_size)
 
-    def _detect(self, img: np.ndarray) -> Tuple[np.ndarray, List[TextBlock]]:
+    def _detect(self, img: np.ndarray, proj: ProjImgTrans) -> Tuple[np.ndarray, List[TextBlock]]:
         _, mask, blk_list = self.model(img)
         return mask, blk_list
 

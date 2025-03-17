@@ -57,6 +57,8 @@ class ESGYoloDetector(TextDetectorBase):
         'confidence threshold': 0.3,
         'IoU threshold': 0.5,
         'font size multiplier': 1.,
+        'font size max': -1,
+        'font size min': -1,
         'detect size': 1024,
         'device': DEVICE_SELECTOR(),
         # A better representation would be routing label to its model 
@@ -148,11 +150,19 @@ class ESGYoloDetector(TextDetectorBase):
                 pts_list += xyxy_list.tolist()
 
         blk_list: List[TextBlock] = mit_merge_textlines(pts_list, width=im_w, height=im_h)
-        resize_fontsz = self.get_param_value('font size multiplier')
-        if resize_fontsz != 1:
-            for blk in blk_list:
-                blk._detected_font_size *= resize_fontsz
-                blk.font_size = blk._detected_font_size
+
+        fnt_rsz = self.get_param_value('font size multiplier')
+        fnt_max = self.get_param_value('font size max')
+        fnt_min = self.get_param_value('font size min')
+        for blk in blk_list:
+            sz = blk._detected_font_size * fnt_rsz
+            if fnt_max > 0:
+                sz = min(fnt_max, sz)
+            if fnt_min > 0:
+                sz = max(fnt_min, sz)
+            blk.font_size = sz
+            blk._detected_font_size = sz
+            
         return mask, blk_list
 
     def updateParam(self, param_key: str, param_content):

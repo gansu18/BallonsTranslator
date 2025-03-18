@@ -12,7 +12,7 @@ from .textitem import TextBlkItem
 
 CBEDGE_WIDTH = 30
 
-VISUALIZE_HITBOX = True
+VISUALIZE_HITBOX = False
 ctrlidx_to_hitbox = {
     0: [-0.75, -0.75, 0.75, 0.75],
     1: [-0.5, -0.75, 1, 0.75],

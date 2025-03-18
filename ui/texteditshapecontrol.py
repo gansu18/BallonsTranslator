@@ -1,11 +1,12 @@
 import math
-import numpy as np
+from functools import cached_property
 
+import numpy as np
 from qtpy.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QWidget, QGraphicsSceneHoverEvent, QLabel, QStyleOptionGraphicsItem, QGraphicsSceneMouseEvent, QGraphicsRectItem
 from qtpy.QtCore import Qt, QRect, QRectF, QPointF, QPoint
 from qtpy.QtGui import QPainter, QPen, QColor
-from utils.imgproc_utils import xywh2xyxypoly, rotate_polygons
 
+from utils.imgproc_utils import xywh2xyxypoly, rotate_polygons
 from .cursor import rotateCursorList, resizeCursorList
 from .textitem import TextBlkItem
 
@@ -101,12 +102,15 @@ class ControlBlockItem(QGraphicsRectItem):
             angleLabel.setVisible(True)
             angleLabel.raise_()
 
+    @property
+    def block_shift_value(self):
+        return self.visible_len * 1.5
+
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseMoveEvent(event)
         blk_item = self.ctrl.blk_item
         if blk_item is None:
             return
-
         if self.drag_mode == self.DRAG_RESHAPE:    
             block_group = self.ctrl.ctrlblock_group
             crect = self.ctrl.rect()
@@ -117,36 +121,36 @@ class ControlBlockItem(QGraphicsRectItem):
                 if self.idx == 0:
                     pos_x = min(self.pos().x(), oppo_pos.x())
                     pos_y = min(self.pos().y(), oppo_pos.y())
-                    crect.setX(pos_x+self.visible_len)
-                    crect.setY(pos_y+self.visible_len)
+                    crect.setX(pos_x+self.block_shift_value)
+                    crect.setY(pos_y+self.block_shift_value)
                 elif self.idx == 2:
                     pos_x = max(self.pos().x(), oppo_pos.x())
                     pos_y = min(self.pos().y(), oppo_pos.y())
-                    crect.setWidth(pos_x-oppo_pos.x())
-                    crect.setY(pos_y+self.visible_len)
+                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
+                    crect.setY(pos_y+self.block_shift_value)
                 elif self.idx == 4:
                     pos_x = max(self.pos().x(), oppo_pos.x())
                     pos_y = max(self.pos().y(), oppo_pos.y())
-                    crect.setWidth(pos_x-oppo_pos.x())
-                    crect.setHeight(pos_y-oppo_pos.y())
+                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
+                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
                 else:   # idx == 6
                     pos_x = min(self.pos().x(), oppo_pos.x())
                     pos_y = max(self.pos().y(), oppo_pos.y())
-                    crect.setX(pos_x+self.visible_len)
-                    crect.setHeight(pos_y-oppo_pos.y())
+                    crect.setX(pos_x+self.block_shift_value)
+                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
             else:
                 if self.idx == 1:
                     pos_y = min(self.pos().y(), oppo_pos.y())
-                    crect.setY(pos_y+self.visible_len)
+                    crect.setY(pos_y+self.block_shift_value)
                 elif self.idx == 3:
                     pos_x = max(self.pos().x(), oppo_pos.x())
-                    crect.setWidth(pos_x-oppo_pos.x())
+                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
                 elif self.idx == 5:
                     pos_y = max(self.pos().y(), oppo_pos.y())
-                    crect.setHeight(pos_y-oppo_pos.y())
+                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
                 else:   # idx == 7
                     pos_x = min(self.pos().x(), oppo_pos.x())
-                    crect.setX(pos_x+self.visible_len)
+                    crect.setX(pos_x+self.block_shift_value)
             
             self.ctrl.setRect(crect)
             scale = self.ctrl.current_scale
@@ -254,10 +258,11 @@ class TextBlkShapeControl(QGraphicsRectItem):
         corner_pnts = xywh2xyxypoly(np.array([b_rect])).reshape(-1, 2)
         edge_pnts = (corner_pnts[[1, 2, 3, 0]] + corner_pnts) / 2
         pnts = [edge_pnts, corner_pnts]
+        shift_params = np.array([[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]])
         for ii, ctrlblock in enumerate(self.ctrlblock_group):
             is_corner = not ii % 2
             idx = ii // 2
-            pos = pnts[is_corner][idx] -0.5 * ctrlblock.edge_width
+            pos = pnts[is_corner][idx] - 0.5 * ctrlblock.edge_width + shift_params[ii] * 0.25 * ctrlblock.edge_width
             ctrlblock.setPos(pos[0], pos[1])
 
     def setAngle(self, angle: int) -> None:

@@ -12,6 +12,33 @@ from .textitem import TextBlkItem
 
 CBEDGE_WIDTH = 30
 
+VISUALIZE_HITBOX = True
+ctrlidx_to_hitbox = {
+    0: [-0.75, -0.75, 0.75, 0.75],
+    1: [-0.5, -0.75, 1, 0.75],
+    2: [0., -0.75, 0.75, 0.75],
+    3: [0., -0.5, 0.75, 1],
+    4: [0., 0., 0.75, 0.75],
+    5: [-0.5, 0., 1, 0.75],
+    6: [-0.75, 0., 0.75, 0.75],
+    7: [-0.75, -0.5, 0.75, 1]
+}
+for k, v in ctrlidx_to_hitbox.items():
+    ctrlidx_to_hitbox[k] = np.array(v, dtype=np.float32)
+
+ctrlidx_to_visiblebox = {
+    0: [0.25, 0.25, 0.75, 0.75],
+    1: [0.25, 0.25, 0.75],
+    2: [0., 0.25, 0.75, 0.75],
+    3: [0., 0.25, 0.75, 1],
+    4: [0., 0., 0.75, 0.75],
+    5: [0.25, 0., 1, 0.75],
+    6: [0.25, 0., 0.75, 0.75],
+    7: [0.25, 0.25, 0.75, 1]
+}
+for k, v in ctrlidx_to_visiblebox.items():
+    ctrlidx_to_visiblebox[k] = np.array(v, dtype=np.float32)
+
 class ControlBlockItem(QGraphicsRectItem):
     DRAG_NONE = 0
     DRAG_RESHAPE = 1
@@ -26,14 +53,18 @@ class ControlBlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.updateEdgeWidth(CBEDGE_WIDTH)
-    
+
     def updateEdgeWidth(self, edge_width: float):
         self.edge_width = edge_width
-        self.visible_len = self.edge_width // 2
+        self.visible_len = self.edge_width / 2
+        self.block_shift_value = self.edge_width * 0.75
         self.pen_width = edge_width / CBEDGE_WIDTH * 2 
-        offset = self.edge_width // 4 + self.pen_width / 2
-        self.visible_rect = QRectF(offset, offset, self.visible_len, self.visible_len)
-        self.setRect(0, 0, self.edge_width, self.edge_width)
+        offset = self.edge_width * ctrlidx_to_visiblebox[self.idx]
+        self.visible_rect = QRectF(offset[0], offset[1], self.visible_len, self.visible_len)
+        hitbox = ctrlidx_to_hitbox[self.idx]
+        w = hitbox[2] * self.edge_width
+        h = hitbox[3] * self.edge_width
+        self.setRect(0, 0, w, h)
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget) -> None:
         rect = QRectF(self.visible_rect)
@@ -41,6 +72,9 @@ class ControlBlockItem(QGraphicsRectItem):
         painter.setPen(QPen(QColor(75, 75, 75), self.pen_width, Qt.PenStyle.SolidLine, Qt.SquareCap))
         painter.fillRect(rect, QColor(200, 200, 200, 125))
         painter.drawRect(rect)
+        if VISUALIZE_HITBOX:
+            painter.setPen(QPen(QColor(75, 125, 0), self.pen_width, Qt.PenStyle.SolidLine, Qt.SquareCap))
+            painter.drawRect(self.boundingRect())
 
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:        
         return super().hoverEnterEvent(event)
@@ -102,10 +136,6 @@ class ControlBlockItem(QGraphicsRectItem):
             angleLabel.setVisible(True)
             angleLabel.raise_()
 
-    @property
-    def block_shift_value(self):
-        return self.visible_len * 1.5
-
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseMoveEvent(event)
         blk_item = self.ctrl.blk_item
@@ -121,33 +151,33 @@ class ControlBlockItem(QGraphicsRectItem):
                 if self.idx == 0:
                     pos_x = min(self.pos().x(), oppo_pos.x())
                     pos_y = min(self.pos().y(), oppo_pos.y())
-                    crect.setX(pos_x+self.block_shift_value)
-                    crect.setY(pos_y+self.block_shift_value)
+                    crect.setX(pos_x + self.block_shift_value)
+                    crect.setY(pos_y + self.block_shift_value)
                 elif self.idx == 2:
                     pos_x = max(self.pos().x(), oppo_pos.x())
                     pos_y = min(self.pos().y(), oppo_pos.y())
-                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
+                    crect.setWidth(pos_x - oppo_pos.x() - self.block_shift_value)
                     crect.setY(pos_y+self.block_shift_value)
                 elif self.idx == 4:
                     pos_x = max(self.pos().x(), oppo_pos.x())
                     pos_y = max(self.pos().y(), oppo_pos.y())
-                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
-                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
+                    crect.setWidth(pos_x-oppo_pos.x() - self.block_shift_value)
+                    crect.setHeight(pos_y-oppo_pos.y() - self.block_shift_value)
                 else:   # idx == 6
                     pos_x = min(self.pos().x(), oppo_pos.x())
                     pos_y = max(self.pos().y(), oppo_pos.y())
                     crect.setX(pos_x+self.block_shift_value)
-                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
+                    crect.setHeight(pos_y-oppo_pos.y() - self.block_shift_value)
             else:
                 if self.idx == 1:
                     pos_y = min(self.pos().y(), oppo_pos.y())
                     crect.setY(pos_y+self.block_shift_value)
                 elif self.idx == 3:
                     pos_x = max(self.pos().x(), oppo_pos.x())
-                    crect.setWidth(pos_x-oppo_pos.x() - self.visible_len)
+                    crect.setWidth(pos_x-oppo_pos.x() - self.block_shift_value)
                 elif self.idx == 5:
                     pos_y = max(self.pos().y(), oppo_pos.y())
-                    crect.setHeight(pos_y-oppo_pos.y() - self.visible_len)
+                    crect.setHeight(pos_y-oppo_pos.y() - self.block_shift_value)
                 else:   # idx == 7
                     pos_x = min(self.pos().x(), oppo_pos.x())
                     crect.setX(pos_x+self.block_shift_value)
@@ -258,11 +288,11 @@ class TextBlkShapeControl(QGraphicsRectItem):
         corner_pnts = xywh2xyxypoly(np.array([b_rect])).reshape(-1, 2)
         edge_pnts = (corner_pnts[[1, 2, 3, 0]] + corner_pnts) / 2
         pnts = [edge_pnts, corner_pnts]
-        shift_params = np.array([[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]])
         for ii, ctrlblock in enumerate(self.ctrlblock_group):
             is_corner = not ii % 2
             idx = ii // 2
-            pos = pnts[is_corner][idx] - 0.5 * ctrlblock.edge_width + shift_params[ii] * 0.25 * ctrlblock.edge_width
+            hitbox_xy = ctrlidx_to_hitbox[ii][:2]
+            pos = pnts[is_corner][idx] + hitbox_xy * ctrlblock.edge_width
             ctrlblock.setPos(pos[0], pos[1])
 
     def setAngle(self, angle: int) -> None:

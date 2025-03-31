@@ -1,13 +1,13 @@
 ## BallonTranslator
 
-[Chino](/README.md) | [Inglês](/README_EN.md) | [pt-BR](../doc/README_PT-BR.md) | [Ruso](../doc/README_RU.md) | [Japonés](../doc/README_JA.md) | [Indonesio](../doc/README_ID.md) | [Vietnamita](../doc/README_VI.md) | [Koreano](../doc/README_KO.md) | ESPAÑOL
+[Chino](/README.md) | [Inglês](/README_EN.md) | [pt-BR](../doc/README_PT-BR.md) | [Ruso](../doc/README_RU.md) | [Japonés](../doc/README_JA.md) | [Indonesio](../doc/README_ID.md) | [Vietnamita](../doc/README_VI.md) | [Koreano](../doc/README_KO.md) | Español
 
 BallonTranslator es otra herramienta asistida por ordenador, basada en el aprendizaje profundo, para traducir cómics/manga.
 
 <img src="../doc/src/ui0.jpg" div align=center>
 
 <p align=center>
-**Vista previa**
+  <strong>Vista previa</strong>
 </p>
 
 ## Recursos
@@ -144,13 +144,13 @@ Los formatos de fuente, como el tamaño y el color, son determinados automática
 ### Herramienta para pintar
 <img src="../doc/src/imgedit_inpaint.gif">
 <p align = "center">
-**Modo de edición de imágenes, herramienta Inpainting**
+  <strong>Modo de edición de imágenes, herramienta Inpainting</strong>
 </p>
 
 ### Herramienta rectángulo
 <img src="../doc/src/rect_tool.gif">
 <p align = "center">
-**Herramienta rectángulo**
+  <strong>Herramienta rectángulo</strong>
 </p>
 
 Para 'borrar' los resultados de inpainting no deseados, utilice la herramienta inpainting o la herramienta rectángulo con el **botón derecho del ratón** pulsado. El resultado depende de la precisión con la que el algoritmo ("método 1" y "método 2" en el gif) extrae la máscara de texto. El rendimiento puede ser peor con texto y fondos complejos.
@@ -158,17 +158,17 @@ Para 'borrar' los resultados de inpainting no deseados, utilice la herramienta i
 ## Edición de texto
 <img src="../doc/src/textedit.gif">
 <p align = "center">
-**Modo de edición de texto**
+  <strong>Modo de edición de texto</strong>
 </p>
 
 <img src="../doc/src/multisel_autolayout.gif" div align=center>
 <p align=center>
-**Formato de texto por lotes y maquetación automática**
+  <strong>Formato de texto por lotes y maquetación automática</strong>
 </p>
 
 <img src="../doc/src/ocrselected.gif" div align=center>
 <p align=center>
-**OCR y traducción de áreas seleccionadas**
+  <strong>OCR y traducción de áreas seleccionadas</strong>
 </p>
 
 ## Atajos

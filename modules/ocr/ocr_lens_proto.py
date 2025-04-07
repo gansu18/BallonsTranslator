@@ -1,5 +1,5 @@
 # Lens_OCR_exp.py
-
+# https://github.com/AuroraWright/owocr
 import re
 import numpy as np
 import time
@@ -154,7 +154,7 @@ class OCRLensAPI_exp(OCRBase):
     """
 
     params = {
-        "delay": 1.0,
+        "delay": 1.5,
         "newline_handling": {
             "type": "selector",
             "options": ["preserve", "remove"],

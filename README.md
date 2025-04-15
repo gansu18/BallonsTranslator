@@ -166,6 +166,7 @@ Sugoi 翻译器作者: [mingshiba](https://www.patreon.com/mingshiba)
  * 支持两个版本的 OpenAI 兼容翻译器，支持兼容 OpenAI API 的官方或第三方LLM提供商，需要在设置面板里配置。
    * 无后缀版本token消耗更小，但分句稳定性稍差，长文本翻译可能有问题。
    * exp后缀版本token消耗更大，但稳定性更好，且在Prompt中进行了“越狱”，适合长文本翻译。
+ * [m2m100](https://huggingface.co/facebook/m2m100_1.2B): 下载并将 m2m100-1.2B-ctranslate2 移到 data/models 目录下
 
 其它优秀的离线英文翻译模型请参考[这条讨论](https://github.com/dmMaze/BallonsTranslator/discussions/515)  
 如需添加新的翻译器请参考[加别的翻译器](doc/加别的翻译器.md)，本程序添加新翻译器只需要继承基类实现两个接口即可不需要理会代码其他部分，欢迎大佬提 pr
@@ -175,7 +176,8 @@ Sugoi 翻译器作者: [mingshiba](https://www.patreon.com/mingshiba)
 * 感谢 [bropines](https://github.com/bropines) 提供俄语翻译
 * 第三方输入法可能会造成右侧编辑框显示 bug，见[#76](https://github.com/dmMaze/BallonsTranslator/issues/76)，暂时不打算修
 * 选中文本迷你菜单支持*聚合词典专业划词翻译*[沙拉查词](https://saladict.crimx.com): [安装说明](doc/saladict_chs.md)
-* 启用 AMD（ROCm6）显卡加速步骤
+<details>
+  <summary><i>启用 AMD（ROCm6）显卡加速步骤</i></summary>
    * 更新显卡驱动至最新版（建议 24.12.1 及以上）
    * 下载并安装 [AMD HIP SDK 6.2](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html)
    * 下载 [ZLUDA](https://github.com/lshqqytiger/ZLUDA/releases)（ROCm6版本）并解压到 zluda 文件夹内
@@ -205,3 +207,4 @@ Sugoi 翻译器作者: [mingshiba](https://www.patreon.com/mingshiba)
     * 启动程序并设置 OCR 和文本检测 为 Cuda **（图像修复请继续使用 CPU）**
     * 运行 OCR 并等待 ZLUDA 编译 PTX 文件 **（首次编译大概需要 5-10 分钟，取决于 CPU 性能）**
     * **下次运行无需编译**
+</details>

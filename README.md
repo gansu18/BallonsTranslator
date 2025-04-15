@@ -178,33 +178,23 @@ Sugoi 翻译器作者: [mingshiba](https://www.patreon.com/mingshiba)
 * 选中文本迷你菜单支持*聚合词典专业划词翻译*[沙拉查词](https://saladict.crimx.com): [安装说明](doc/saladict_chs.md)
 <details>
   <summary><i>启用 AMD（ROCm6）显卡加速步骤</i></summary>
-   * 更新显卡驱动至最新版（建议 24.12.1 及以上）
-   * 下载并安装 [AMD HIP SDK 6.2](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html)
-   * 下载 [ZLUDA](https://github.com/lshqqytiger/ZLUDA/releases)（ROCm6版本）并解压到 zluda 文件夹内
-   * 复制 zluda 文件夹到系统盘下：比如c盘（C:\zluda）
-   * 配置系统环境变量
+
+1. 更新显卡驱动至最新版（建议 24.12.1 及以上，下载并安装 [AMD HIP SDK 6.2](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html)  
+2. 下载 [ZLUDA](https://github.com/lshqqytiger/ZLUDA/releases)（ROCm6版本）并解压到 zluda 文件夹内，复制 zluda 文件夹到系统盘下：比如c盘（C:\zluda）  
+3. 配置系统环境变量，以 windows 10 系统为例：设置 - 系统属性 - 高级系统设置 - 环境变量 - 系统变量 - 找到 path 变量，点击编辑，在最后添加 `C:\zluda` 和 `%HIP_PATH_62%bin` 两项  
+4. 替换 CUDA 库的动态链接文件：将 `C:\zluda` 文件夹内的 `cublas64_11.dll` `cusparse64_11.dll` 和 `nvrtc64_112_0.dll` 复制出一份到桌面，按如下规则重命名复制出来的文件  
+```
+  `原文件名` → `新文件名`
+
+  `cublas.dll` → `cublas64_11.dll`
+
+  `cusparse.dll` → `cusparse64_11.dll`
+
+  `nvrtc.dll` → `nvrtc64_112_0.dll`
+```
+  将已经重命名的文件替换掉 `BallonsTranslator\ballontrans_pylibs_win\Lib\site-packages\torch\lib\` 目录中的同名文件
+
+5. 启动程序并设置 OCR 和文本检测 为 Cuda **（图像修复请继续使用 CPU）**
+6. 运行 OCR 并等待 ZLUDA 编译 PTX 文件 **（首次编译大概需要 5-10 分钟，取决于 CPU 性能）**,**下次运行无需编译**
   
-      这里以 windows 10 系统为例：设置 - 系统属性 - 高级系统设置 - 环境变量 - 系统变量 - 找到 path 变量
-  
-      点击编辑 在最后添加 `C:\zluda` 和 `%HIP_PATH_62%bin` 两项
-  
-   * 替换 CUDA 库的动态链接文件
-  
-      将 `C:\zluda` 文件夹内的 `cublas64_11.dll` `cusparse64_11.dll` 和 `nvrtc64_112_0.dll` 复制出一份到桌面
-
-      按如下规则重命名复制出来的文件
-
-      `原文件名` → `新文件名`
-
-      `cublas.dll` → `cublas64_11.dll`
-
-      `cusparse.dll` → `cusparse64_11.dll`
-
-      `nvrtc.dll` → `nvrtc64_112_0.dll`
-    
-      将已经重命名的文件替换掉 `BallonsTranslator\ballontrans_pylibs_win\Lib\site-packages\torch\lib\` 目录中的同名文件
-
-    * 启动程序并设置 OCR 和文本检测 为 Cuda **（图像修复请继续使用 CPU）**
-    * 运行 OCR 并等待 ZLUDA 编译 PTX 文件 **（首次编译大概需要 5-10 分钟，取决于 CPU 性能）**
-    * **下次运行无需编译**
 </details>

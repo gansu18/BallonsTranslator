@@ -348,8 +348,7 @@ class OcrEngine:
         lines_data = self._get_lines(ocr_result, line_count)
         text_angle = self._get_text_angle(ocr_result)
 
-        full_text = "\n".join(line["text"] for line in lines_data if line.get("text"))
-
+        # Return raw lines, text construction will happen later
         if self.logger and getattr(self.logger, "isEnabledFor", lambda level: False)(
             logging.DEBUG
         ):
@@ -358,7 +357,11 @@ class OcrEngine:
                 f"Parsed results: angle={angle_str}, {len(lines_data)} lines extracted."
             )
 
-        return {"text": full_text, "text_angle": text_angle, "lines": lines_data}
+        return {
+            "text": None,  # Text will be constructed in the main class
+            "text_angle": text_angle,
+            "lines": lines_data,
+        }
 
     def _get_text_angle(self, ocr_result: c_int64):
         text_angle = c_float()
@@ -503,6 +506,11 @@ class OCROneAPI(OCRBase):
             "value": "preserve",
             "description": "Newline character handling in OCR result (preserve/remove)",
         },
+        "reverse_line_order": {
+            "type": "checkbox",
+            "value": False,
+            "description": "Reverse the order of detected text lines (for vertical CJK text)",
+        },
         "no_uppercase": {
             "type": "checkbox",
             "value": False,
@@ -519,6 +527,11 @@ class OCROneAPI(OCRBase):
     @property
     def no_uppercase(self):
         value = self.get_param_value("no_uppercase")
+        return bool(value) if value is not None else False
+
+    @property
+    def reverse_line_order(self):
+        value = self.get_param_value("reverse_line_order")
         return bool(value) if value is not None else False
 
     def __init__(self, **params) -> None:
@@ -616,24 +629,17 @@ class OCROneAPI(OCRBase):
                     )
 
                 try:
-                    raw_text = self.ocr(cropped_img, apply_postprocessing=False)
-                    processed_text = self._apply_text_postprocessing(raw_text)
+                    processed_text = self.ocr(cropped_img, apply_postprocessing=True)
                     blk.text = processed_text
 
                     if self.debug_mode and self.logger:
-                        log_text_raw = (
-                            (raw_text[:50] + "...")
-                            if raw_text and len(raw_text) > 50
-                            else raw_text
-                        )
                         log_text_proc = (
                             (processed_text[:50] + "...")
                             if processed_text and len(processed_text) > 50
                             else processed_text
                         )
-                        self.logger.debug(f'Block {i+1}: Raw text: "{log_text_raw}"')
                         self.logger.debug(
-                            f'Block {i+1}: Processed text: "{log_text_proc}"'
+                            f'Block {i+1}: Final processed text: "{log_text_proc}"'
                         )
                 except Exception as e:
                     if self.logger:
@@ -702,16 +708,24 @@ class OCROneAPI(OCRBase):
             result_dict = self.engine.recognize_pil(pil_image)
             ocr_time = time.time()
 
+            lines_data = result_dict.get("lines", [])
+
             if self.debug_mode and self.logger:
-                # raw_text = result_dict.get("text", "")
-                num_lines = len(result_dict.get("lines", []))
+                num_lines = len(lines_data)
                 angle = result_dict.get("text_angle")
                 angle_str = f"{angle:.2f}" if angle is not None else "N/A"
                 self.logger.debug(
                     f"OcrEngine result: {num_lines} line(s), angle {angle_str} degrees. (took {ocr_time - prep_time:.3f}s)"
                 )
 
-            full_text = result_dict.get("text", "")
+            line_texts = [line["text"] for line in lines_data if line.get("text")]
+
+            if self.reverse_line_order:
+                line_texts.reverse()
+                if self.debug_mode and self.logger:
+                    self.logger.debug(" -> Applied reverse line order.")
+
+            full_text = "\n".join(line_texts)
 
             if apply_postprocessing:
                 full_text = self._apply_text_postprocessing(full_text)
@@ -726,7 +740,7 @@ class OCROneAPI(OCRBase):
                         f'Text after postprocessing: "{log_processed_text}" (took {post_time - ocr_time:.3f}s)'
                     )
             elif self.debug_mode and self.logger:
-                self.logger.debug("Skipping text postprocessing as per request.")
+                self.logger.debug(f"Skipping text postprocessing as per request.")
 
             total_time = time.time() - start_time
             if self.debug_mode and self.logger:

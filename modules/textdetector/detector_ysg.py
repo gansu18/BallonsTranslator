@@ -83,6 +83,15 @@ class YSGYoloDetector(TextDetectorBase):
     
     def _load_model(self):
         model_path = self.get_param_value('model path')
+        if not osp.exists(model_path):
+            global CKPT_LIST
+            df_model_path = model_path
+            for p in CKPT_LIST:
+                if osp.exists(p):
+                    df_model_path = p
+                    break
+            self.logger.warning(f'{model_path} does not exist, try fall back to default value {df_model_path}')
+            model_path = df_model_path
 
         if 'rtdetr' in os.path.basename(model_path):
             from ultralytics import RTDETR as MODEL

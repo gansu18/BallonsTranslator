@@ -90,7 +90,10 @@ def imread(imgpath, read_type=cv2.IMREAD_COLOR):
         return None
     # img = cv2.imdecode(np.fromfile(imgpath, dtype=np.uint8), read_type)
     img = np.array(Image.open(imgpath).convert('RGB'))
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    if read_type == cv2.IMREAD_GRAYSCALE:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:   
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     return img
 
 def imwrite(img_path, img, ext='.png', quality=100):

@@ -92,6 +92,8 @@ class StateChecker(QCheckBox):
         if event.button() == Qt.MouseButton.LeftButton:
             if not self.isChecked():
                 self.setChecked(True)
+            else:
+                self.setChecked(False)
     def setChecked(self, check: bool) -> None:
         super().setChecked(check)
         if check:
@@ -272,10 +274,12 @@ class LeftBar(Widget):
 
     def stateCheckerChanged(self, checker_type: str):
         if checker_type == 'imgtrans':
-            self.configChecker.setChecked(False)
+            if self.configChecker.isChecked():
+                self.configChecker.setChecked(False)
             self.imgTransChecked.emit()
         elif checker_type == 'config':
-            self.imgTransChecker.setChecked(False)
+            if self.imgTransChecker.isChecked():
+                self.imgTransChecker.setChecked(False)
             self.configChecked.emit()
 
     def needleftStackWidget(self) -> bool:

@@ -8,38 +8,36 @@ from qtpy.QtWidgets import QDialog, QMessageBox, QFileDialog
 
 from utils.logger import logger as LOGGER
 from utils.io_utils import imread, imwrite
-from utils import create_error_dialog
-from utils.proj_imgtrans import ProjImgTrans
-from .custom_widget import ProgressMessageBox
+from .config_proj import ProjImgTrans
+from .stylewidgets import ProgressMessageBox
 
 
 class ThreadBase(QThread):
-
-    _thread_exception_type = None
-    _thread_error_msg = 'Thread job failed.'
-
+    exception_occured = Signal(str, str, str)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.job = None
-
-    def on_exec_failed(self):
-        return
+        self.exception_occured.connect(self.handleRunTimeException)
     
     def run(self):
         if self.job is not None:
             try:
                 self.job()
             except Exception as e:
-                self.on_exec_failed()
-                create_error_dialog(e, self._thread_error_msg, self._thread_exception_type)
+                self.exception_occured.emit(self.tr('Execution error'), str(e), traceback.format_exc())
         self.job = None
 
+    def handleRunTimeException(self, msg: str, detail: str = None, verbose: str = ''):
+        if detail is not None:
+            msg += ': ' + detail
+        LOGGER.error(msg + '\n' + verbose)
+        err = QMessageBox()
+        err.setText(msg)
+        err.setDetailedText(verbose)
+        err.exec()
+
 class ImgSaveThread(ThreadBase):
-
     img_writed = Signal(str)
-    _thread_exception_type = 'ImgSaveThread'
-    _thread_error_msg = 'Failed to save image.'
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.im_save_list = []
@@ -70,8 +68,6 @@ class ImgTransProjFileIOThread(ThreadBase):
     fin_page = Signal()
     fin_io = Signal()
 
-    _thread_exception_type = 'ImgTransProjFileIOThread'
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.proj: ProjImgTrans = None
@@ -87,13 +83,12 @@ class ImgTransProjFileIOThread(ThreadBase):
         if self.fin_counter == self.num_pages:
             self.progress_bar.hide()
 
-    def on_exec_failed(self):
+    def handleRunTimeException(self, msg: str, detail: str = None, verbose: str = ''):
+        super().handleRunTimeException(msg, detail, verbose)
         self.progress_bar.hide()
 
 
 class ExportDocThread(ImgTransProjFileIOThread):
-
-    _thread_error_msg = 'Failed to export Doc'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,8 +123,6 @@ class ExportDocThread(ImgTransProjFileIOThread):
 
 
 class ImportDocThread(ImgTransProjFileIOThread):
-
-    _thread_error_msg = 'Failed to import Doc'
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)

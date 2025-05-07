@@ -25,8 +25,7 @@ def det_rearrange_forward(
     dbnet_batch_forward: Callable[[np.ndarray, str], Tuple[np.ndarray, np.ndarray]], 
     tgt_size: int = 1280, 
     max_batch_size: int = 4, 
-    device='cuda', 
-    crop_as_square=False, verbose=False):
+    device='cuda', verbose=False):
     '''
     Rearrange image to square batches before feeding into network if following conditions are satisfied: \n
     1. Extreme aspect ratio
@@ -106,10 +105,7 @@ def det_rearrange_forward(
     if transpose:
         img = einops.rearrange(img, 'h w c -> w h c')
     
-    if crop_as_square:
-        pw_num = 1
-    else:
-        pw_num = max(int(np.floor(2 * tgt_size / w)), 2)
+    pw_num = max(int(np.floor(2 * tgt_size / w)), 2)
     patch_size = ph = pw_num * w
 
     ph_num = int(np.ceil(h / ph))
@@ -134,7 +130,7 @@ def det_rearrange_forward(
         batch = np.array(batch)
         db, mask = dbnet_batch_forward(batch, device=device)
 
-        for ii, (d, m) in enumerate(zip(db, mask)):
+        for d, m in zip(db, mask):
             if pad_size > 0:
                 paddb = int(db.shape[-1] / tgt_size * pad_size)
                 padmsk = int(mask.shape[-1] / tgt_size * pad_size)
@@ -142,9 +138,6 @@ def det_rearrange_forward(
                 m = m[..., :-padmsk, :-padmsk]
             db_lst.append(d)
             mask_lst.append(m)
-            if verbose:
-                cv2.imwrite(f'result/rearrange_db_{ii}.png', (d[0] * 255).astype(np.uint8))
-                cv2.imwrite(f'result/rearrange_thr_{ii}.png', (d[1] * 255).astype(np.uint8))
 
     db = _unrearrange(db_lst, transpose, channel=2, pad_num=pad_num)
     mask = _unrearrange(mask_lst, transpose, channel=1, pad_num=pad_num)
@@ -343,7 +336,7 @@ class TextDetector:
         if lines.size == 0:
             lines = []
         else:
-            lines = lines.astype(np.int64)
+            lines = lines.astype(np.int32)
         blk_list = group_output(blks, lines, im_w, im_h, mask)
         mask_refined = refine_mask(img, mask, blk_list, refine_mode=refine_mode)
         if keep_undetected_mask:

@@ -1,6 +1,6 @@
 # coding:utf-8
 from ctypes import POINTER, Structure, c_int
-from ctypes.wintypes import DWORD, HWND, ULONG, POINT, RECT, UINT, BOOL, HRGN
+from ctypes.wintypes import DWORD, HWND, ULONG, POINT, RECT, UINT
 from enum import Enum
 
 
@@ -142,12 +142,3 @@ class NCCALCSIZE_PARAMS(Structure):
 
 
 LPNCCALCSIZE_PARAMS = POINTER(NCCALCSIZE_PARAMS)
-
-
-class DWM_BLURBEHIND(Structure):
-    _fields_ = [
-        ('dwFlags',                DWORD),
-        ('fEnable',                BOOL),
-        ('hRgnBlur',               HRGN),
-        ('fTransitionOnMaximized', BOOL),
-    ]

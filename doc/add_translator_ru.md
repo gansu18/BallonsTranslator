@@ -1,7 +1,3 @@
-[简体中文](../doc/加别的翻译器.md) | [English](../doc/how_to_add_new_translator.md) | [pt-BR](../doc/Como_add_um_novo_tradutor.md) | Русский
-
----
-
 Если у вас есть базовые знания программирования на python, вы будете знать, как использовать python для вызова необходимого api переводчика или модели перевода, Напишите класс в dl/translators.__init__.py следующим образом, чтобы использовать его непосредственно в программе.      
 Следующий пример DummyTranslator закомментирован в dl/translator/__init__.py, и его можно не комментировать, чтобы увидеть результат в программе.  
 
@@ -19,7 +15,7 @@ class DummyTranslator(BaseTranslator):
         'device': {
             'type': 'selector',
             'options': ['cpu', 'cuda'],
-            'value': 'cpu'
+            'select': 'cpu'
         }
     }
 
@@ -50,7 +46,7 @@ class DummyTranslator(BaseTranslator):
         '''
         super().updateParam(param_key, param_content)
         if param_key == 'device':
-            # self.model.to(self.params['device']['value'])
+            # self.model.to(self.params['device']['select'])
             pass
 ```
 
@@ -72,7 +68,7 @@ class DummyTranslator(BaseTranslator):
         'device': {
             'type': 'selector',
             'options': ['cpu', 'cuda'],
-            'value': 'cpu'
+            'select': 'cpu'
         }
     }
 ```  

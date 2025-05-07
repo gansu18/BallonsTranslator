@@ -3,21 +3,10 @@ from pathlib import Path
 import numpy as np
 import os.path as osp
 from qtpy.QtGui import QPixmap,  QColor, QImage, QTextDocument, QTextCursor
-from qtpy.QtCore import Qt, QPointF
 
 from utils import shared as C
 from utils.structures import Tuple, Union, List, Dict, Config, field, nested_dataclass
-
-
-QKEY = Qt.Key
-QNUMERIC_KEYS = {QKEY.Key_0:0,QKEY.Key_1:1,QKEY.Key_2:2,QKEY.Key_3:3,QKEY.Key_4:4,QKEY.Key_5:5,QKEY.Key_6:6,QKEY.Key_7:7,QKEY.Key_8:8,QKEY.Key_9:9}
-
-ARROWKEY2DIRECTION = {
-    QKEY.Key_Left: QPointF(-1., 0.),
-    QKEY.Key_Right: QPointF(1., 0.),
-    QKEY.Key_Up: QPointF(0., -1.),
-    QKEY.Key_Down: QPointF(0., 1.),
-}
+from utils.textblock import TextBlock
 
 # return bgr tuple
 def qrgb2bgr(color: Union[QColor, Tuple, List] = None) -> Tuple[int, int, int]:
@@ -40,14 +29,12 @@ def pixmap2ndarray(pixmap: Union[QPixmap, QImage], keep_alpha=True):
         qimg = pixmap
 
     byte_str = qimg.bits()
-    if byte_str is None:
-        return None
-
     if hasattr(byte_str, 'asstring'):
         byte_str = qimg.bits().asstring(h * w * 4)
     else:
+    #     byte_str = byte_str.tobytes()
         byte_str = byte_str.tobytes()
-
+    # qimg.bits().
     img = np.frombuffer(byte_str, dtype=np.uint8).reshape((w,h,4))
     
     if keep_alpha:
@@ -72,6 +59,34 @@ def ndarray2pixmap(img, return_qimg=False):
     return QPixmap(qImg)
 
 
+class ProjectDirNotExistException(Exception):
+    pass
+
+class ProjectLoadFailureException(Exception):
+    pass
+
+class ProjectNotSupportedException(Exception):
+    pass
+
+class ImgnameNotInProjectException(Exception):
+    pass
+
+class NotImplementedProjException(Exception):
+    pass
+
+class InvalidModuleConfigException(Exception):
+    pass
+
+class InvalidProgramConfigException(Exception):
+    pass
+
+
+class ProjHardSubExtract:
+    def __init__(self):
+        self.type = 'hardsubextract'
+        raise NotImplementedProjException('hardsubextract')
+
+
 class LruIgnoreArg:
 
     def __init__(self, **kwargs) -> None:
@@ -92,7 +107,6 @@ color_pattern = re.compile(r'color:(.*?);', re.DOTALL)
 td_pattern = re.compile(r'<td(.*?)>(.*?)</td>', re.DOTALL)
 table_pattern = re.compile(r'(.*?)<table', re.DOTALL)
 fontsize_pattern = re.compile(r'font-size:(.*?)pt;', re.DOTALL)
-ffamily_pattern = re.compile(r'font-family:\'(.*?)\'', re.DOTALL)
 
 
 def span_repl_func(matched, color):
@@ -111,9 +125,6 @@ def set_html_color(html, rgb):
         return color_pattern.sub(f'color:{hex_color};', html)
     else:
         return span_pattern.sub(lambda matched: span_repl_func(matched, hex_color), html)
-    
-def set_html_family(html, family):
-    return ffamily_pattern.sub(f'font-family:\'{family}\'', html)
 
 def html_max_fontsize(html:  str) -> float:
     size_list = fontsize_pattern.findall(html)

@@ -4,16 +4,12 @@ import re
 import time
 from typing import List, Dict, Union
 import yaml
-import traceback
-import inspect
 
 import openai
 
 from .base import BaseTranslator, register_translator
 
-
 OPENAPI_V1_API = int(openai.__version__.split('.')[0]) >= 1
-
 
 class InvalidNumTranslations(Exception):
     pass
@@ -27,27 +23,25 @@ class GPTTranslator(BaseTranslator):
         'model': {
             'type': 'selector',
             'options': [
-                'gpt-4o',
-                'gpt-4-turbo',
                 'gpt3',
                 'gpt35-turbo',
                 'gpt4',
             ],
-            'value': 'gpt-4o'
+            'select': 'gpt35-turbo'
         },
         'override model': '',
         'prompt template': {
             'type': 'editor',
-            'value': 'Please help me to translate the following text from a manga to {to_lang} (if it\'s already in {to_lang} or looks like gibberish you have to output it as it is instead):\n',
+            'content': 'Please help me to translate the following text from a manga to {to_lang} (if it\'s already in {to_lang} or looks like gibberish you have to output it as it is instead):\n',
         },
         'chat system template': {
             'type': 'editor',
-            'value': 'You are a professional translation engine, please translate the text into a colloquial, elegant and fluent content, without referencing machine translations. You must only translate the text content, never interpret it. If there\'s any issue in the text, output the text as is.\nTranslate to {to_lang}.',
+            'content': 'You are a professional translation engine, please translate the text into a colloquial, elegant and fluent content, without referencing machine translations. You must only translate the text content, never interpret it. If there\'s any issue in the text, output the text as is.\nTranslate to {to_lang}.',
         },
         
         'chat sample': {
             'type': 'editor',
-            'value': 
+            'content': 
 '''日本語-简体中文:
     source:
         - 二人のちゅーを 目撃した ぼっちちゃん
@@ -69,18 +63,11 @@ class GPTTranslator(BaseTranslator):
         'delay': 0.3,
         'max tokens': 4096,
         'temperature': 0.5,
-        'top p': 1.,
+        'top p': 1,
         # 'return prompt': False,
         'retry attempts': 5,
         'retry timeout': 15,
-        '3rd party api url': '',
-        'frequency penalty': 0.0,
-        'presence penalty': 0.0,
-        'low vram mode': {
-            'value': False,
-            'description': 'check it if you\'re running it locally on a single device and encountered a crash due to vram OOM',
-            'type': 'checkbox',
-        }
+        '3rd party api url': ''
     }
 
     def _setup_translator(self):
@@ -102,43 +89,38 @@ class GPTTranslator(BaseTranslator):
         self.lang_map['Español'] = 'Spanish'
         self.lang_map['Türk dili'] = 'Turkish'
         self.lang_map['украї́нська мо́ва'] = 'Ukrainian'
-        self.lang_map['Thai'] = 'Thai'
-        self.lang_map['Arabic'] = 'Arabic'
-        self.lang_map['Malayalam'] = 'Malayalam'
-        self.lang_map['Tamil'] = 'Tamil'
-        self.lang_map['Hindi'] = 'Hindi'
 
         self.token_count = 0
         self.token_count_last = 0
     
     @property
     def model(self) -> str:
-        return self.params['model']['value']
+        return self.params['model']['select']
 
     @property
     def temperature(self) -> float:
-        return self.params['temperature']
+        return float(self.params['temperature'])
     
     @property
     def max_tokens(self) -> int:
-        return self.params['max tokens']
+        return int(self.params['max tokens'])
     
     @property
-    def top_p(self) -> float:
-        return self.params['top p']
+    def top_p(self) -> int:
+        return int(self.params['top p'])
     
     @property
     def retry_attempts(self) -> int:
-        return self.params['retry attempts']
+        return int(self.params['retry attempts'])
     
     @property
     def retry_timeout(self) -> int:
-        return self.params['retry timeout']
+        return int(self.params['retry timeout'])
     
     @property
     def chat_system_template(self) -> str:
         to_lang = self.lang_map[self.lang_target]
-        return self.params['chat system template']['value'].format(to_lang=to_lang)
+        return self.params['chat system template']['content'].format(to_lang=to_lang)
     
     @property
     def chat_sample(self):
@@ -146,9 +128,9 @@ class GPTTranslator(BaseTranslator):
         if self.model == 'gpt3':
             return None
 
-        samples = self.params['chat sample']['value']
+        samples = self.params['chat sample']['content']
         try: 
-            samples = yaml.load(self.params['chat sample']['value'], Loader=yaml.FullLoader)
+            samples = yaml.load(self.params['chat sample']['content'], Loader=yaml.FullLoader)
         except:
             self.logger.error(f'failed to load parse sample: {samples}')
             samples = {}
@@ -167,7 +149,7 @@ class GPTTranslator(BaseTranslator):
         else:
             return None
 
-    def _assemble_prompts(self, queries: List[str], from_lang: str = None, to_lang: str = None, max_tokens = None):
+    def _assemble_prompts(self, queries: List[str], from_lang: str = None, to_lang: str = None, max_tokens = None) -> List[str]:
         if from_lang is None:
             from_lang = self.lang_map[self.lang_source]
         if to_lang is None:
@@ -178,7 +160,7 @@ class GPTTranslator(BaseTranslator):
         if max_tokens is None:
             max_tokens = self.max_tokens
         # return_prompt = self.params['return prompt']
-        prompt_template = self.params['prompt template']['value'].format(to_lang=to_lang).rstrip()
+        prompt_template = self.params['prompt template']['content'].format(to_lang=to_lang).rstrip()
         prompt += prompt_template
 
         i_offset = 0
@@ -239,13 +221,7 @@ class GPTTranslator(BaseTranslator):
                     response = self._request_translation(prompt, chat_sample)
                     new_translations = re.split(r'<\|\d+\|>', response)[-num_src:]
                     if len(new_translations) != num_src:
-                        # https://github.com/dmMaze/BallonsTranslator/issues/379
-                        _tr2 = re.sub(r'<\|\d+\|>', '', response)
-                        _tr2 = _tr2.split('\n')
-                        if len(_tr2) == num_src:
-                            new_translations = _tr2
-                        else:
-                            raise InvalidNumTranslations
+                        raise InvalidNumTranslations
                     break
                 except InvalidNumTranslations:
                     retry_attempt += 1
@@ -254,15 +230,14 @@ class GPTTranslator(BaseTranslator):
                         self.logger.error(message)
                         new_translations = [''] * num_src
                         break
-                    self.logger.warning(message + '\n' + f'Restarting request. Attempt: {retry_attempt}')
+                    self.logger.warn(message + '\n' + f'Restarting request. Attempt: {retry_attempt}')
 
                 except Exception as e:
                     retry_attempt += 1
                     if retry_attempt >= self.retry_attempts:
                         new_translations = [''] * num_src
                         break
-                    self.logger.warning(f'Translation failed due to {e}. Attempt: {retry_attempt}, sleep for {self.retry_timeout} secs...')
-                    self.logger.error(f'Request traceback: ', traceback.format_exc())
+                    self.logger.warn(f'Translation failed due to {e}. Attempt: {retry_attempt}, sleep for {self.retry_timeout} secs...')
                     time.sleep(self.retry_timeout)
                     # time.sleep(self.retry_timeout)
             # if return_prompt:
@@ -290,14 +265,11 @@ class GPTTranslator(BaseTranslator):
             max_tokens=self.max_tokens // 2, # Assuming that half of the tokens are used for the query
             temperature=self.temperature,
             top_p=self.top_p,
-            frequency_penalty=float(self.params['frequency penalty']),
-            presence_penalty=float(self.params['presence penalty'])
         )
 
         if OPENAPI_V1_API:
-            if response.usage is not None:
-                self.token_count += response.usage.total_tokens
-                self.token_count_last = response.usage.total_tokens
+            self.token_count += response.usage.total_tokens
+            self.token_count_last = response.usage.total_tokens
         else:
             self.token_count += response.usage['total_tokens']
             self.token_count_last = response.usage['total_tokens']
@@ -313,33 +285,21 @@ class GPTTranslator(BaseTranslator):
             messages.insert(1, {'role': 'user', 'content': chat_sample[0]})
             messages.insert(2, {'role': 'assistant', 'content': chat_sample[1]})
 
-        func_args = {
-            'model': model,
-            'messages': messages,
-            'temperature': self.temperature,
-            'top_p': self.top_p,
-        }
-        max_tokens = self.max_tokens // 2 # Assuming that half of the tokens are used for the query
-        func_parameters = inspect.signature(openai.chat.completions.create).parameters
-        if 'max_completion_tokens' in func_parameters:
-            func_args['max_completion_tokens'] = max_tokens
-        else:
-            func_args['max_tokens'] = max_tokens
-        if 'presence_penalty' in func_parameters:
-            func_args['presence_penalty'] = self.params['presence penalty']
-            func_args['frequency_penalty'] = self.params['frequency penalty']
-
         if OPENAPI_V1_API:
             openai_chatcompletions_create = openai.chat.completions.create
         else:
             openai_chatcompletions_create = openai.ChatCompletion.create
-
-        response = openai_chatcompletions_create(**func_args)
+        response = openai_chatcompletions_create(
+            model=model,
+            messages=messages,
+            max_tokens=self.max_tokens // 2,
+            temperature=self.temperature,
+            top_p=self.top_p,
+        )
 
         if OPENAPI_V1_API:
-            if response.usage is not None:
-                self.token_count += response.usage.total_tokens
-                self.token_count_last = response.usage.total_tokens
+            self.token_count += response.usage.total_tokens
+            self.token_count_last = response.usage.total_tokens
         else:
             self.token_count += response.usage['total_tokens']
             self.token_count_last = response.usage['total_tokens']
@@ -358,23 +318,10 @@ class GPTTranslator(BaseTranslator):
         url = self.params['3rd party api url'].strip()
         if not url:
             return None
-        
-        # 对于小于v1.0.0版本的openai包，末尾的斜杠会导致请求失败，因此弹出警告
-        if url.endswith('v1/'):
-            if not OPENAPI_V1_API:
-                self.logger.warning(f"The OpenAI package version you are using is outdated. Please remove the trailing slash after 'v1' in the URL: {url}")
-
-        # 检查是否包含"/v1"
-        if '/v1' not in url:
-            self.logger.warning(f"API URL does not contain '/v1': {url}, please ensure it's the correct URL.")
-        
         return url
 
     def _request_translation(self, prompt, chat_sample: List):
-
-        self.logger.debug(f'chatgpt prompt: \n {prompt}' )
-
-        openai.api_key = self.params['api key'].strip()
+        openai.api_key = self.params['api key']
         base_url = self.api_url
         if OPENAPI_V1_API:
             openai.base_url = base_url

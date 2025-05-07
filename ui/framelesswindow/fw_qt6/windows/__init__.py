@@ -30,16 +30,7 @@ class WindowsFramelessWindow(QWidget):
         # self.titleBar = TitleBar(self)
         self._isResizeEnabled = True
 
-        self.updateFrameless()
-
-        # solve issue #5
-        self.windowHandle().screenChanged.connect(self.__onScreenChanged)
-
-        # self.resize(500, 500)
-        # self.titleBar.raise_()
-
-    def updateFrameless(self):
-        """ update frameless window """
+        # remove window border
         if not win_utils.isWin7():
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         else:
@@ -50,6 +41,11 @@ class WindowsFramelessWindow(QWidget):
         self.windowEffect.addWindowAnimation(self.winId())
         if not isinstance(self, AcrylicWindow):
             self.windowEffect.addShadowEffect(self.winId())
+
+        # solve issue #5
+        self.windowHandle().screenChanged.connect(self.__onScreenChanged)
+
+        # self.titleBar.raise_()
 
     # def setTitleBar(self, titleBar):
     #     """ set custom title bar
@@ -82,8 +78,7 @@ class WindowsFramelessWindow(QWidget):
             pos = QCursor.pos()
             xPos = pos.x() - self.x()
             yPos = pos.y() - self.y()
-            w = self.frameGeometry().width()
-            h = self.frameGeometry().height()
+            w, h = self.width(), self.height()
 
             # fixes https://github.com/zhiyiYo/PyQt-Frameless-Window/issues/98
             bw = 0 if win_utils.isMaximized(msg.hWnd) or win_utils.isFullScreen(msg.hWnd) else self.BORDER_WIDTH
@@ -157,10 +152,6 @@ class AcrylicWindow(WindowsFramelessWindow):
         super().__init__(parent=parent)
         self.__closedByKey = False
 
-        self.updateFrameless()
-        self.setStyleSheet("AcrylicWindow{background:transparent}")
-
-    def updateFrameless(self):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.windowEffect.enableBlurBehindWindow(self.winId())
         self.windowEffect.addWindowAnimation(self.winId())
@@ -172,6 +163,8 @@ class AcrylicWindow(WindowsFramelessWindow):
             self.windowEffect.setAcrylicEffect(self.winId())
             if win_utils.isGreaterEqualWin11():
                 self.windowEffect.addShadowEffect(self.winId())
+
+        self.setStyleSheet("AcrylicWindow{background:transparent}")
 
     def nativeEvent(self, eventType, message):
         """ Handle the Windows message """

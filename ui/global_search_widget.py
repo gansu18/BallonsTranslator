@@ -1,20 +1,21 @@
-from typing import List, Union, Tuple, Dict
-import re, time
-
 from qtpy.QtWidgets import QHBoxLayout, QSizePolicy, QComboBox, QStyledItemDelegate, QLabel, QTreeView, QCheckBox, QStyleOptionViewItem, QVBoxLayout, QStyle, QMessageBox, QStyle,  QApplication, QWidget
 from qtpy.QtCore import Qt, QItemSelection, QSize, Signal, QUrl, QModelIndex, QRectF
 from qtpy.QtGui import QFont, QPainter, QTextCursor, QStandardItemModel, QStandardItem, QAbstractTextDocumentLayout, QColor, QPalette, QTextDocument, QTextCharFormat
+
+from typing import List, Union, Tuple, Dict
+import re, time
+import os.path as osp
 
 from utils.logger import logger as LOGGER
 from .page_search_widget import SearchEditor, HighlightMatched, SEARCHRST_HIGHLIGHT_COLOR
 from .misc import doc_replace
 from utils.config import pcfg
-from .custom_widget import ProgressMessageBox, Widget, NoBorderPushBtn
+from .stylewidgets import Widget, NoBorderPushBtn, ProgressMessageBox
 from .textitem import TextBlkItem, TextBlock
-from .textedit_area import TransPairWidget, SourceTextEdit
+from .textedit_area import TransPairWidget, SourceTextEdit, TransTextEdit
+from .config_proj import ProjImgTrans
 from .io_thread import ThreadBase
 from utils import shared as C
-from utils.proj_imgtrans import ProjImgTrans
 
 SEARCHRST_FONTSIZE = 10.3
 
@@ -24,7 +25,7 @@ class HTMLDelegate( QStyledItemDelegate ):
         self.doc = QTextDocument()
         self.doc.setUndoRedoEnabled(False)
 
-    def paint(self, painter, option, index):                                                                                                                                                                               
+    def paint(self, painter, option, index):
         
         options = QStyleOptionViewItem(option)
         self.initStyleOption(options, index)
@@ -176,8 +177,7 @@ class SearchResultTree(QTreeView):
 class GlobalReplaceThead(ThreadBase):
 
     finished = Signal()
-    _thread_error_msg = 'Failed to perform replacement'
-    _thread_exception_type = 'GlobalReplaceThead'
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -275,7 +275,8 @@ class GlobalReplaceThead(ThreadBase):
     def on_finished(self):
         self.progress_bar.hide()
 
-    def on_exec_failed(self):
+    def handleRunTimeException(self, msg: str, detail: str = None, verbose: str = ''):
+        super().handleRunTimeException(msg, detail, verbose)
         self.progress_bar.hide()
 
 

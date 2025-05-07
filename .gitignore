@@ -1,5 +1,4 @@
 __pycache__
-local_*
 inpainted
 mask
 result
@@ -43,9 +42,6 @@ localtmp*
 venv
 pip
 .DS_Store
-*.dic
-*.aff
-*.exc
 
 fonts/*
 !fonts/put fonts here.txt
@@ -54,10 +50,8 @@ fonts/*
 aria2c
 python
 git
-modules/experiments
 update_git.bat
 launch_win_venv.bat
 install_venv.bat
 install-BT.cmd
 download_models.bat
-Ultralytics/settings.json

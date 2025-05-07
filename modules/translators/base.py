@@ -38,11 +38,6 @@ LANGMAP_GLOBAL = {
     'Español': '',
     'Türk dili': '',
     'украї́нська мо́ва': '',  
-    'Thai': '',
-    'Arabic': '',
-    'Hindi': '',
-    'Malayalam': '',
-    'Tamil': '',
 }
 
 SYSTEM_LANG = ''
@@ -88,7 +83,7 @@ class BaseTranslator(BaseModule):
             if TRANSLATORS.module_dict[key] == self.__class__:
                 self.name = key
                 break
-        self.textblk_break = '\n##\n'
+        self.textblk_break = '\n###\n'
         self.lang_source: str = lang_source
         self.lang_target: str = lang_target
         self.lang_map: Dict = LANGMAP_GLOBAL.copy()
@@ -197,12 +192,6 @@ class BaseTranslator(BaseModule):
                 non_empty_ids.append(ii)
                 text_list.append(text)
             translations.append(text)
-
-        # non_empty_txtlst_str = ',\n'.join(text_list)
-        # LOGGER.debug(f'non empty src text list: \n[{non_empty_txtlst_str}]')
-
-        for callback_name, callback in self._preprocess_hooks.items():
-            callback(translations = translations, textblocks = textblk_lst, translator = self, source_text = text_list)
 
         if len(text_list) > 0:
             _translations = self.translate(text_list)

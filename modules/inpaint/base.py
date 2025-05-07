@@ -8,7 +8,7 @@ from utils.registry import Registry
 from utils.textblock_mask import extract_ballon_mask
 from utils.imgproc_utils import enlarge_window
 
-from ..base import BaseModule, DEFAULT_DEVICE, soft_empty_cache, DEVICE_SELECTOR, GPUINTENSIVE_SET, TORCH_DTYPE_MAP, BF16_SUPPORTED
+from ..base import BaseModule, DEFAULT_DEVICE, gc_collect, DEVICE_SELECTOR, GPUINTENSIVE_SET, TORCH_DTYPE_MAP
 from ..textdetector import TextBlock
 
 INPAINTERS = Registry('inpainters')
@@ -30,6 +30,10 @@ class InpainterBase(BaseModule):
             if INPAINTERS.module_dict[key] == self.__class__:
                 self.name = key
                 break
+        self.setup_inpainter()
+
+    def setup_inpainter(self):
+        raise NotImplementedError
     
     def memory_safe_inpaint(self, img: np.ndarray, mask: np.ndarray, textblock_list: List[TextBlock] = None) -> np.ndarray:
         '''
@@ -39,7 +43,7 @@ class InpainterBase(BaseModule):
             return self._inpaint(img, mask, textblock_list)
         except Exception as e:
             if DEFAULT_DEVICE == 'cuda' and isinstance(e, torch.cuda.OutOfMemoryError):
-                soft_empty_cache()
+                gc_collect()
                 try:
                     return self._inpaint(img, mask, textblock_list)
                 except Exception as ee:
@@ -58,17 +62,13 @@ class InpainterBase(BaseModule):
                 raise e
 
     def inpaint(self, img: np.ndarray, mask: np.ndarray, textblock_list: List[TextBlock] = None, check_need_inpaint: bool = False) -> np.ndarray:
-        
-        if not self.all_model_loaded():
-            self.load_model()
-        
         if not self.inpaint_by_block or textblock_list is None:
             if check_need_inpaint:
                 ballon_msk, non_text_msk = extract_ballon_mask(img, mask)
                 if ballon_msk is not None:
                     non_text_region = np.where(non_text_msk > 0)
                     non_text_px = img[non_text_region]
-                    average_bg_color = np.median(non_text_px, axis=0)
+                    average_bg_color = np.mean(non_text_px, axis=0)
                     std_bgr = np.std(non_text_px - average_bg_color, axis=0)
                     std_max = np.max(std_bgr)
                     inpaint_thresh = 7 if np.std(std_bgr) > 1 else 10
@@ -91,7 +91,7 @@ class InpainterBase(BaseModule):
                     if ballon_msk is not None:
                         non_text_region = np.where(non_text_msk > 0)
                         non_text_px = im[non_text_region]
-                        average_bg_color = np.median(non_text_px, axis=0)
+                        average_bg_color = np.mean(non_text_px, axis=0)
                         std_bgr = np.std(non_text_px - average_bg_color, axis=0)
                         std_max = np.max(std_bgr)
                         inpaint_thresh = 7 if np.std(std_bgr) > 1 else 10
@@ -119,10 +119,8 @@ class InpainterBase(BaseModule):
 @register_inpainter('opencv-tela')
 class OpenCVInpainter(InpainterBase):
 
-    def __init__(self, **params) -> None:
-        super().__init__(**params)
+    def setup_inpainter(self):
         self.inpaint_method = lambda img, mask, *args, **kwargs: cv2.inpaint(img, mask, 3, cv2.INPAINT_NS)
-        
     
     def _inpaint(self, img: np.ndarray, mask: np.ndarray, textblock_list: List[TextBlock] = None) -> np.ndarray:
         return self.inpaint_method(img, mask)
@@ -156,8 +154,7 @@ class PatchmatchInpainter(InpainterBase):
                 'archive_sha256_pre_calculated': 'c991ff61f7cb3efaf8e75d957e62d56ba646083bc25535f913ac65775c16ca65'
         }]
 
-    def __init__(self, **params) -> None:
-        super().__init__(**params)
+    def setup_inpainter(self):
         from . import patch_match
         self.inpaint_method = lambda img, mask, *args, **kwargs: patch_match.inpaint(img, mask, patch_size=3)
     
@@ -174,6 +171,8 @@ class PatchmatchInpainter(InpainterBase):
 import torch
 from utils.imgproc_utils import resize_keepasp
 from .aot import AOTGenerator, load_aot_model
+AOTMODEL: AOTGenerator = None
+AOTMODEL_PATH = 'data/models/aot_inpainter.ckpt'
 
 
 @register_inpainter('aot')
@@ -186,7 +185,7 @@ class AOTInpainter(InpainterBase):
                 1024, 
                 2048
             ], 
-            'value': 2048
+            'select': 2048
         }, 
         'device': DEVICE_SELECTOR(),
         'description': 'manga-image-translator inpainter'
@@ -195,7 +194,6 @@ class AOTInpainter(InpainterBase):
     device = DEFAULT_DEVICE
     inpaint_size = 2048
     model: AOTGenerator = None
-    _load_model_keys = {'model'}
 
     download_file_list = [{
             'url': 'https://github.com/zyddnys/manga-image-translator/releases/download/beta-0.3/inpainting.ckpt',
@@ -203,15 +201,15 @@ class AOTInpainter(InpainterBase):
             'files': 'data/models/aot_inpainter.ckpt',
     }]
 
-    def __init__(self, **params) -> None:
-        super().__init__(**params)
-        self.device = self.params['device']['value']
-        self.inpaint_size = int(self.params['inpaint_size']['value'])
-        self.model: AOTGenerator = None
-        
-    def _load_model(self):
-        AOTMODEL_PATH = 'data/models/aot_inpainter.ckpt'
-        self.model = load_aot_model(AOTMODEL_PATH, self.device)
+    def setup_inpainter(self):
+        global AOTMODEL
+        self.device = self.params['device']['select']
+        if AOTMODEL is None:
+            self.model = AOTMODEL = load_aot_model(AOTMODEL_PATH, self.device)
+        else:
+            self.model = AOTMODEL
+            self.model.to(self.device)
+        self.inpaint_size = int(self.params['inpaint_size']['select'])
 
     def moveToDevice(self, device: str, precision: str = None):
         self.model.to(device)
@@ -253,8 +251,7 @@ class AOTInpainter(InpainterBase):
         im_h, im_w = img.shape[:2]
         img_torch, mask_torch, img_original, mask_original, pad_bottom, pad_right = self.inpaint_preprocess(img, mask)
         img_inpainted_torch = self.model(img_torch, mask_torch)
-        img_inpainted = ((img_inpainted_torch.cpu().squeeze_(0).permute(1, 2, 0).numpy() + 1.0) * 127.5)
-        img_inpainted = (np.clip(np.round(img_inpainted), 0, 255)).astype(np.uint8)
+        img_inpainted = ((img_inpainted_torch.cpu().squeeze_(0).permute(1, 2, 0).numpy() + 1.0) * 127.5).astype(np.uint8)
         if pad_bottom > 0:
             img_inpainted = img_inpainted[:-pad_bottom]
         if pad_right > 0:
@@ -270,17 +267,17 @@ class AOTInpainter(InpainterBase):
         super().updateParam(param_key, param_content)
 
         if param_key == 'device':
-            param_device = self.params['device']['value']
-            if self.model is not None:
-                self.model.to(param_device)
+            param_device = self.params['device']['select']
+            self.model.to(param_device)
             self.device = param_device
 
         elif param_key == 'inpaint_size':
-            self.inpaint_size = int(self.params['inpaint_size']['value'])
+            self.inpaint_size = int(self.params['inpaint_size']['select'])
 
 
 from .lama import LamaFourier, load_lama_mpe
 
+LAMA_MPE: LamaFourier = None
 @register_inpainter('lama_mpe')
 class LamaInpainterMPE(InpainterBase):
 
@@ -291,27 +288,31 @@ class LamaInpainterMPE(InpainterBase):
                 1024, 
                 2048
             ], 
-            'value': 2048
-        },
-        'device': DEVICE_SELECTOR(not_supported=['privateuseone'])
+            'select': 2048
+        }, 
+        'device': DEVICE_SELECTOR()
     }
+    precision = 'fp32'
+
+    device = DEFAULT_DEVICE
+    inpaint_size = 2048
 
     download_file_list = [{
             'url': 'https://github.com/zyddnys/manga-image-translator/releases/download/beta-0.3/inpainting_lama_mpe.ckpt',
             'sha256_pre_calculated': 'd625aa1b3e0d0408acfd6928aa84f005867aa8dbb9162480346a4e20660786cc',
             'files': 'data/models/lama_mpe.ckpt',
     }]
-    _load_model_keys = {'model'}
 
-    def __init__(self, **params) -> None:
-        super().__init__(**params)
-        self.device = self.params['device']['value']
-        self.inpaint_size = int(self.params['inpaint_size']['value'])
-        self.precision = 'fp32'
-        self.model: LamaFourier = None
+    def setup_inpainter(self):
+        global LAMA_MPE
 
-    def _load_model(self):
-        self.model = load_lama_mpe(r'data/models/lama_mpe.ckpt', self.device)
+        self.device = self.params['device']['select']
+        if LAMA_MPE is None:
+            self.model = LAMA_MPE = load_lama_mpe(r'data/models/lama_mpe.ckpt', self.device)
+        else:
+            self.model = LAMA_MPE
+            self.model.to(self.device)
+        self.inpaint_size = int(self.params['inpaint_size']['select'])
 
     def inpaint_preprocess(self, img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
@@ -367,8 +368,7 @@ class LamaInpainterMPE(InpainterBase):
         else:
             img_inpainted_torch = self.model(img_torch, mask_torch, rel_pos, direct)
 
-        img_inpainted = (img_inpainted_torch.to(device='cpu', dtype=torch.float32).squeeze_(0).permute(1, 2, 0).numpy() * 255)
-        img_inpainted = (np.clip(np.round(img_inpainted), 0, 255)).astype(np.uint8)
+        img_inpainted = (img_inpainted_torch.to(device='cpu', dtype=torch.float32).squeeze_(0).permute(1, 2, 0).numpy() * 255).astype(np.uint8)
         if pad_bottom > 0:
             img_inpainted = img_inpainted[:-pad_bottom]
         if pad_right > 0:
@@ -384,16 +384,15 @@ class LamaInpainterMPE(InpainterBase):
         super().updateParam(param_key, param_content)
 
         if param_key == 'device':
-            param_device = self.params['device']['value']
-            if self.model is not None:
-                self.model.to(param_device)
+            param_device = self.params['device']['select']
+            self.model.to(param_device)
             self.device = param_device
 
         elif param_key == 'inpaint_size':
-            self.inpaint_size = int(self.params['inpaint_size']['value'])
+            self.inpaint_size = int(self.params['inpaint_size']['select'])
 
         elif param_key == 'precision':
-            precision = self.params['precision']['value']
+            precision = self.params['precision']['select']
             self.precision = precision
 
     def moveToDevice(self, device: str, precision: str = None):
@@ -402,6 +401,7 @@ class LamaInpainterMPE(InpainterBase):
         if precision is not None:
             self.precision = precision
 
+LAMA_LARGE: LamaFourier = None
 @register_inpainter('lama_large_512px')
 class LamaLarge(LamaInpainterMPE):
 
@@ -415,16 +415,16 @@ class LamaLarge(LamaInpainterMPE):
                 1536, 
                 2048
             ], 
-            'value': 1536,
-        },
-        'device': DEVICE_SELECTOR(not_supported=['privateuseone']),
+            'select': 1536,
+        }, 
+        'device': DEVICE_SELECTOR(),
         'precision': {
             'type': 'selector',
             'options': [
                 'fp32',
                 'bf16'
             ], 
-            'value': 'bf16' if BF16_SUPPORTED == 'cuda' else 'fp32'
+            'select': 'bf16' if DEFAULT_DEVICE == 'cuda' else 'fp32'
         }, 
     }
 
@@ -434,15 +434,20 @@ class LamaLarge(LamaInpainterMPE):
             'files': 'data/models/lama_large_512px.ckpt',
     }]
 
-    def __init__(self, **params) -> None:
-        super().__init__(**params)
-        self.precision = self.params['precision']['value']
+    device = DEFAULT_DEVICE
+    inpaint_size = 1024
 
-    def _load_model(self):
-        device = self.params['device']['value']
-        precision = self.params['precision']['value']
+    def setup_inpainter(self):
+        global LAMA_LARGE
 
-        self.model = load_lama_mpe(r'data/models/lama_large_512px.ckpt', device='cpu', use_mpe=False, large_arch=True)
+        device = self.params['device']['select']
+        self.inpaint_size = int(self.params['inpaint_size']['select'])
+        precision = self.params['precision']['select']
+
+        if LAMA_LARGE is None:
+            self.model = LAMA_LARGE = load_lama_mpe(r'data/models/lama_large_512px.ckpt', device='cpu', use_mpe=False, large_arch=True)
+        else:
+            self.model = LAMA_LARGE
         self.moveToDevice(device, precision=precision)
 
 
@@ -457,7 +462,7 @@ class LamaLarge(LamaInpainterMPE):
 #                 1024, 
 #                 2048
 #             ], 
-#             'value': 2048
+#             'select': 2048
 #         }, 
 #         'device': {
 #             'type': 'selector',
@@ -465,7 +470,7 @@ class LamaLarge(LamaInpainterMPE):
 #                 'cpu',
 #                 'cuda'
 #             ],
-#             'value': DEFAULT_DEVICE
+#             'select': DEFAULT_DEVICE
 #         }
 #     }
 
@@ -475,14 +480,14 @@ class LamaLarge(LamaInpainterMPE):
 #     def setup_inpainter(self):
 #         global LAMA_ORI
 
-#         self.device = self.params['device']['value']
+#         self.device = self.params['device']['select']
 #         if LAMA_ORI is None:
 #             self.model = LAMA_ORI = load_lama_mpe(r'data/models/lama_org.ckpt', self.device, False)
 #         else:
 #             self.model = LAMA_ORI
 #             self.model.to(self.device)
 #         self.inpaint_by_block = True if self.device == 'cuda' else False
-#         self.inpaint_size = int(self.params['inpaint_size']['value'])
+#         self.inpaint_size = int(self.params['inpaint_size']['select'])
 
 #     def inpaint_preprocess(self, img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
@@ -543,7 +548,7 @@ class LamaLarge(LamaInpainterMPE):
 #         super().updateParam(param_key, param_content)
 
 #         if param_key == 'device':
-#             param_device = self.params['device']['value']
+#             param_device = self.params['device']['select']
 #             self.model.to(param_device)
 #             self.device = param_device
 #             if param_device == 'cuda':
@@ -552,4 +557,4 @@ class LamaLarge(LamaInpainterMPE):
 #                 self.inpaint_by_block = True
 
 #         elif param_key == 'inpaint_size':
-#             self.inpaint_size = int(self.params['inpaint_size']['value'])
+#             self.inpaint_size = int(self.params['inpaint_size']['select'])

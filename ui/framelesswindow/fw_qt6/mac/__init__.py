@@ -14,8 +14,9 @@ class MacFramelessWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.windowEffect = MacWindowEffect(self)
-        # https://bugreports.qt.io/browse/QTBUG-133215
-        self.setAttribute(Qt.WidgetAttribute.WA_ContentsMarginsRespectsSafeArea, False)
+        # must enable acrylic effect before creating title bar
+        if isinstance(self, AcrylicWindow):
+            self.windowEffect.setAcrylicEffect(self.winId())
 
         # self.titleBar = TitleBar(self)
 
@@ -23,7 +24,7 @@ class MacFramelessWindow(QWidget):
         self.__nsWindow = view.window()
 
         # hide system title bar
-        self.hideSystemTitleBar()
+        self.__hideSystemTitleBar()
 
         # self.resize(500, 500)
         # self.titleBar.raise_()
@@ -52,9 +53,9 @@ class MacFramelessWindow(QWidget):
     def changeEvent(self, event):
         super().changeEvent(event)
         if event.type() == QEvent.Type.WindowStateChange:
-            self.hideSystemTitleBar()
+            self.__hideSystemTitleBar()
 
-    def hideSystemTitleBar(self):
+    def __hideSystemTitleBar(self):
         # extend view to title bar region
         self.__nsWindow.setStyleMask_(
             self.__nsWindow.styleMask() | Cocoa.NSFullSizeContentViewWindowMask)
@@ -70,3 +71,13 @@ class MacFramelessWindow(QWidget):
         # self.__nsWindow.standardWindowButton_(Cocoa.NSWindowCloseButton).setHidden_(True)
         # self.__nsWindow.standardWindowButton_(Cocoa.NSWindowZoomButton).setHidden_(True)
         # self.__nsWindow.standardWindowButton_(Cocoa.NSWindowMiniaturizeButton).setHidden_(True)
+
+
+class AcrylicWindow(MacFramelessWindow):
+    """ A frameless window with acrylic effect """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.windowEffect.setAcrylicEffect(self.winId())
+        self.setStyleSheet("background: transparent")

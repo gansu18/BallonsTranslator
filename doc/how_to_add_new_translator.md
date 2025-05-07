@@ -1,7 +1,3 @@
-[简体中文](../doc/加别的翻译器.md) | English | [pt-BR](../doc/Como_add_um_novo_tradutor.md) | [Русский](../doc/add_translator_ru.md)
-
----
-
 If you know how to to call the target translator api or translation model in python, implement a class in ballontranslator/dl/translators.__init__.py as follows to use it in the app.      
 
 The following example DummyTranslator is commented out of ballontranslator/dl/translator/__init__.py and can be uncommented to test in the program.
@@ -24,7 +20,7 @@ class DummyTranslator(BaseTranslator):
         'device': {
             'type': 'selector',
             'options': ['cpu', 'cuda'],
-            'value': 'cpu'
+            'select': 'cpu'
         }
     }
 
@@ -58,7 +54,7 @@ class DummyTranslator(BaseTranslator):
         super().updateParam(param_key, param_content)
         if param_key == 'device':
             # get current state from params
-            # self.model.to(self.params['device']['value'])
+            # self.model.to(self.params['device']['select'])
             pass
 
     @property
@@ -95,7 +91,7 @@ The value of the parameter can also be a dictionary, in which case it must be de
         'device': {
             'type': 'selector',
             'options': ['cpu', 'cuda'],
-            'value': 'cpu'
+            'select': 'cpu'
         }
     }
 ```  

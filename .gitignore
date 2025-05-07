@@ -57,3 +57,4 @@ install-BT.cmd
 download_models.bat
 Ultralytics/settings.json
 sentencepiece/
+output_translations.txt

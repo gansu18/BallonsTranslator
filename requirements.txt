@@ -37,7 +37,7 @@ multivolumefile>=0.2.3
 httpx[socks,brotli]>=0.28.0
 langdetect>=1.0.9
 pywin32>=306; sys_platform == 'win32'
-winsdk>=10.0.22621.0; sys_platform == 'win32'
+winsdk>=1.0.0b10; sys_platform == 'win32'
 brotlicffi>=0.9.0; sys_platform == 'win32'
 pyobjc-core>=9.2; sys_platform == 'darwin'
 pyobjc-framework-cocoa>=9.2; sys_platform == 'darwin'

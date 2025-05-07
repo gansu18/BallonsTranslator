@@ -856,7 +856,7 @@ class MainWindow(FramelessWindow):
                     blk.translation = full_len(blk.translation)
                 else:
                     blk.translation = half_len(blk.translation)
-                    blk.translation = re.sub(r'([?.!"])\s+', r'\1', blk.translation)    # remove spaces following punctuations
+                    blk.translation = re.sub(r'([?.!"])\s+', r'\1', blk.translation)
         else:
             for blk in blk_list:
                 if blk.vertical:

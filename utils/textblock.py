@@ -364,9 +364,7 @@ def sort_textblk_list(blk_list: List[TextBlock], im_w: int, im_h: int) -> List[T
     return blk_list
 
 def sort_regions(regions: List[TextBlock], right_to_left=None) -> List[TextBlock]:
-    # from manga image translator
-    # Sort regions from right to left, top to bottom
-    
+    # Sort regions in traditional Japanese reading order (top-to-bottom, right-to-left)
     nr = len(regions)
     if right_to_left is None and nr > 0:
         nv = 0
@@ -374,25 +372,38 @@ def sort_regions(regions: List[TextBlock], right_to_left=None) -> List[TextBlock
             if r.vertical:
                 nv += 1
         right_to_left = nv / nr > 0
-    
-    sorted_regions = []
-    for region in sorted(regions, key=lambda region: region.center()[1]):
-        for i, sorted_region in enumerate(sorted_regions):
-            if region.center()[1] > sorted_region.xyxy[3]:
-                continue
-            if region.center()[1] < sorted_region.xyxy[1]:
-                sorted_regions.insert(i + 1, region)
-                break
 
-            # y center of region inside sorted_region so sort by x instead
-            if right_to_left and region.center()[0] > sorted_region.center()[0]:
-                sorted_regions.insert(i, region)
-                break
-            if not right_to_left and region.center()[0] < sorted_region.center()[0]:
-                sorted_regions.insert(i, region)
-                break
+    if len(regions) == 0:
+        return regions
+
+    # First sort by Y position (top to bottom)
+    sorted_by_y = sorted(regions, key=lambda r: (r.xyxy[1] + r.xyxy[3]) / 2)
+    
+    # Group regions that are close vertically
+    vertical_groups = []
+    current_group = [sorted_by_y[0]]
+    
+    for region in sorted_by_y[1:]:
+        prev_region = current_group[-1]
+        # If regions are close vertically, add to current group
+        if abs((region.xyxy[1] + region.xyxy[3])/2 - (prev_region.xyxy[1] + prev_region.xyxy[3])/2) < (region.xyxy[3] - region.xyxy[1]):
+            current_group.append(region)
         else:
-            sorted_regions.append(region)
+            # Sort current group by X position (right to left)
+            current_group.sort(key=lambda r: -(r.xyxy[0] + r.xyxy[2])/2)
+            vertical_groups.append(current_group)
+            current_group = [region]
+    
+    # Don't forget to add the last group
+    if current_group:
+        current_group.sort(key=lambda r: -(r.xyxy[0] + r.xyxy[2])/2)
+        vertical_groups.append(current_group)
+
+    # Flatten the groups back into a single list
+    sorted_regions = []
+    for group in vertical_groups:
+        sorted_regions.extend(group)
+
     return sorted_regions
 
 def examine_textblk(blk: TextBlock, im_w: int, im_h: int, sort: bool = False) -> None:

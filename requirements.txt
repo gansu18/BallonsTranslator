@@ -1,46 +1,48 @@
 PyQt6-Qt6==6.4.2
 PyQt6==6.4.2
-numpy
+numpy>=1.24.0
 urllib3==1.26.18
-jaconv
-torch
-torchvision
-transformers
-fugashi
-unidic_lite
-tqdm
-opencv-python
-shapely
-pyclipper
-einops
-termcolor
-bs4
-deepl
-qtpy
-spacy-pkuseg
-ctranslate2
-python-docx
-docx2txt
-piexif
-keyboard
-ordered-set
-opencc-python-reimplemented
-requests
-Pillow
-beautifulsoup4
-colorama
-openai
-pyyaml
-natsort
-py7zr
-multivolumefile
-httpx[socks,brotli]
-langdetect
-pywin32; sys_platform == 'win32'
-winsdk; sys_platform == 'win32'
-brotlicffi; sys_platform == 'win32'
-pyobjc-core; sys_platform == 'darwin'
-pyobjc-framework-cocoa; sys_platform == 'darwin'
-pyobjc-framework-coreml; sys_platform == 'darwin'
-pyobjc-framework-quartz; sys_platform == 'darwin'
-pyobjc-framework-vision; sys_platform == 'darwin'
+jaconv>=0.3.4
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+fugashi>=1.2.1
+unidic_lite>=1.0.8
+tqdm>=4.66.0
+opencv-python>=4.8.0
+shapely>=2.0.0
+pyclipper>=1.3.0
+einops>=0.6.0
+termcolor>=2.3.0
+bs4>=0.0.1
+deepl>=1.15.0
+qtpy>=2.3.0
+spacy-pkuseg>=0.0.26
+ctranslate2>=3.24.0
+python-docx>=0.8.11
+docx2txt>=0.8
+piexif>=1.1.3
+keyboard>=0.13.5
+ordered-set>=4.1.0
+opencc-python-reimplemented>=0.1.7
+requests>=2.31.0
+Pillow>=10.0.0
+beautifulsoup4>=4.12.0
+colorama>=0.4.6
+openai>=1.0.0
+pyyaml>=6.0.1
+natsort>=8.4.0
+py7zr>=0.20.8
+multivolumefile>=0.2.3
+httpx[socks,brotli]>=0.28.0
+langdetect>=1.0.9
+pywin32>=306; sys_platform == 'win32'
+winsdk>=10.0.22621.0; sys_platform == 'win32'
+brotlicffi>=0.9.0; sys_platform == 'win32'
+pyobjc-core>=9.2; sys_platform == 'darwin'
+pyobjc-framework-cocoa>=9.2; sys_platform == 'darwin'
+pyobjc-framework-coreml>=9.2; sys_platform == 'darwin'
+pyobjc-framework-quartz>=9.2; sys_platform == 'darwin'
+pyobjc-framework-vision>=9.2; sys_platform == 'darwin'
+msl-loadlib>=0.10.0
+translators>=5.9.9

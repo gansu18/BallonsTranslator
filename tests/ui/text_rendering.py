@@ -12,7 +12,6 @@ sys.path.append(APP_ROOT)
 if __name__ == '__main__':
 
     os.chdir(APP_ROOT)
-    os.environ['QT_API'] = 'pyqt6'
 
     from launch import main, args
     from ui.config_proj import ProjImgTrans

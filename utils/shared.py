@@ -4,7 +4,7 @@ import os.path as osp
 import json
 import sys
 
-ICON_PATH = 'icons/icon.icns'
+ICON_PATH = 'icons/[ICONNAME]'
 
 PROGRAM_PATH = osp.abspath(osp.dirname(osp.dirname(__file__)))
 LOGGING_PATH = osp.join(PROGRAM_PATH, 'logs')
@@ -29,16 +29,6 @@ CONFIG_COMBOBOX_SHORT = 200
 CONFIG_COMBOBOX_MIDEAN = 332
 CONFIG_COMBOBOX_LONG = 468
 
-_size2width = {
-    'short': CONFIG_COMBOBOX_SHORT,
-    'median': CONFIG_COMBOBOX_MIDEAN,
-    'long':CONFIG_COMBOBOX_LONG
-}
-
-def size2width(size: str):
-    global _size2width
-    return _size2width[size]
-
 HORSLIDER_FIXHEIGHT = 36
 
 WIDGET_SPACING_CLOSE = 8
@@ -47,8 +37,8 @@ TEXTEDIT_FIXWIDTH = 350
 TEXTEFFECT_FIXWIDTH = 400
 TEXTEFFECT_MAXHEIGHT = 500
 
-LEFTBAR_WIDTH = 48
-LEFTBTN_WIDTH = 28
+LEFTBAR_WIDTH = 60
+LEFTBTN_WIDTH = 38
 
 LDPI = 96.
 DPI = 188.75
@@ -75,12 +65,9 @@ MAX_NUM_LOG = 7
 
 TRANSLATE_DIR = osp.join(PROGRAM_PATH, 'translate')
 DISPLAY_LANGUAGE_MAP = {
-    "English": "English",
-    "简体中文": "zh_CN",
-    "Русский": "ru_RU",
-    "Português (Brasil)": "pt_BR",
-    "한국어": "ko_KR",
-    "Español": "es_MX"
+    'English': 'English',
+    '简体中文': 'zh_CN',
+    'Русский': 'ru_RU'
 }
 VALID_LANG_SET = set(list(DISPLAY_LANGUAGE_MAP.values()))
 
@@ -95,36 +82,14 @@ DEFAULT_DISPLAY_LANG = 'English'
 USE_PYSIDE6 = False
 ON_MACOS = sys.platform == 'darwin'
 ON_WINDOWS = sys.platform == 'win32'
-HEADLESS = False
-DEBUG = False
-args = None
 
-FUZZY_MATCH_IMAGE_NAME = False
+DEBUG = False
 
 cache_data: Dict = None
 cache_dir: str = osp.join(PROGRAM_PATH, '.btrans_cache')
 cache_path: str = osp.join(PROGRAM_PATH, '.btrans_cache/cache.json')
 CACHE_UPDATED = False
 check_local_file_hash = True
-
-FONT_FAMILIES: set = None
-CUSTOM_FONTS = []
-pbar = {}
-runtime_widget_set = set()
-
-def add_to_runtime_widget_set(widget):
-    runtime_widget_set.add(widget)
-
-def remove_from_runtime_widget_set(widget):
-    if widget in runtime_widget_set:
-        runtime_widget_set.remove(widget)
-
-showed_exception = set()
-
-# it will be set to ui.mainwindow.create_errdialog.emit after UI initialized
-create_errdialog_in_mainthread = lambda *args, **kwargs: None
-
-create_infodialog_in_mainthread = lambda *args, **kwargs: None
 
 def load_cache():
     global cache_data
@@ -154,6 +119,3 @@ def dump_cache():
     global CACHE_UPDATED
     CACHE_UPDATED = False
 
-config_name_to_view_widget = {}
-action_to_view_config_name = {}
-register_view_widget: lambda *args, **kwargs: None

@@ -1,6 +1,4 @@
-简体中文 | [English](../doc/saladict.md) | [pt-BR](../doc/saladict_pt-br.md) | [한국어](../doc/saladict_ko.md)
-
----
+[English](./saladict.md)
 
 需要浏览器支持为扩展设置全局快捷键（火狐尚未支持）
 

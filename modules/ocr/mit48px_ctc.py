@@ -392,12 +392,11 @@ class AvgMeter() :
 
 class OCR48pxCTC:
 
-    def __init__(self, model_path: str, device='cpu'):
+    def __init__(self, model_path: str, device='cpu', max_chunk_size=16):
         with open('data/alphabet-all-v5.txt', 'r', encoding = 'utf-8') as fp :
             dictionary = [s[:-1] for s in fp.readlines()]
         self.device = device
-        self.text_height = 48
-        self.maxwidth = 8100
+        self.max_chunk_size = max_chunk_size
 
         model = OCR(dictionary, 768)
         sd = torch.load(model_path, map_location = 'cpu')
@@ -415,16 +414,26 @@ class OCR48pxCTC:
         self.device = device
 
     @torch.no_grad()
-    def __call__(self, textblk_lst: List[TextBlock], regions: List[np.ndarray], textblk_lst_indices: List, chunk_size = 16) -> None:
-
+    def __call__(self, img: np.ndarray, textblk_lst: List[TextBlock]) :
+        if isinstance(textblk_lst, TextBlock):
+            textblk_lst = [textblk_lst]
+        
+        regions = []
+        textblk_lst_indices = []
+        region_idx = 0
+        for blk_idx, textblk in enumerate(textblk_lst):
+            for ii in range(len(textblk)):
+                textblk_lst_indices.append(blk_idx)
+                regions.append(textblk.get_transformed_region(img, ii, 48, maxwidth=8100))
+                region_idx += 1
         perm = range(len(regions))
         chunck_idx = 0
-        for indices in chunks(perm, chunk_size) :
+        for indices in chunks(perm, self.max_chunk_size) :
             N = len(indices)
             widths = [regions[i].shape[1] for i in indices]
             # max_width = 4 * (max(widths) + 7) // 4
             max_width = (4 * (max(widths) + 7) // 4) + 128
-            region = np.zeros((N, self.text_height, max_width, 3), dtype = np.uint8)
+            region = np.zeros((N, 48, max_width, 3), dtype = np.uint8)
             for i, idx in enumerate(indices) :
                 W = regions[idx].shape[1]
                 region[i, :, : W, :] = regions[idx]

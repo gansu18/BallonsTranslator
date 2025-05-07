@@ -2,7 +2,7 @@ import json, os, sys, time, io
 import os.path as osp
 from pathlib import Path
 import importlib
-from typing import List, Dict, Callable, Union
+from typing import List, Dict, Callable
 import base64
 import traceback
 
@@ -13,42 +13,29 @@ import numpy as np
 from natsort import natsorted
 
 IMG_EXT = ['.bmp', '.jpg', '.png', '.jpeg', '.webp']
+NP_BOOL_TYPES = (np.bool_, np.bool_)
+NP_FLOAT_TYPES = (np.float16, np.float32, np.float64)
+NP_INT_TYPES = (np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)
 
-NP_INT_TYPES = (np.int_, np.int8, np.int16, np.int32, np.int64, np.uint, np.uint8, np.uint16, np.uint32, np.uint64)
-if int(np.version.full_version.split('.')[0]) == 1:
-    NP_BOOL_TYPES = (np.bool_, np.bool8)
-    NP_FLOAT_TYPES = (np.float_, np.float16, np.float32, np.float64)
-else:
-    NP_BOOL_TYPES = (np.bool_, np.bool)
-    NP_FLOAT_TYPES = (np.float16, np.float32, np.float64)
 
 def to_dict(obj):
     return json.loads(json.dumps(obj, default=lambda o: o.__dict__, ensure_ascii=False))
 
-def serialize_np(obj):
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, np.ScalarType):
-        if isinstance(obj, NP_BOOL_TYPES):
-            return bool(obj)
-        elif isinstance(obj, NP_FLOAT_TYPES):
-            return float(obj)
-        elif isinstance(obj, NP_INT_TYPES):
-            return int(obj)
-    return obj
-
-def json_dump_nested_obj(obj, **kwargs):
-    def _default(obj):
-        if isinstance(obj, (np.ndarray, np.ScalarType)):
-            return serialize_np(obj)
-        return obj.__dict__
-    return json.dumps(obj, default=lambda o: _default(o), ensure_ascii=False, **kwargs)
+def json_dump_nested_obj(obj):
+    return json.dumps(obj, default=lambda o: o.__dict__, ensure_ascii=False)
 
 # https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, (np.ndarray, np.ScalarType)):
-            return serialize_np(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.ScalarType):
+            if isinstance(obj, NP_BOOL_TYPES):
+                return bool(obj)
+            elif isinstance(obj, NP_FLOAT_TYPES):
+                return float(obj)
+            elif isinstance(obj, NP_INT_TYPES):
+                return int(obj)
         return json.JSONEncoder.default(self, obj)
 
 def find_all_imgs(img_dir, abs_path=False, sort=False):
@@ -67,33 +54,10 @@ def find_all_imgs(img_dir, abs_path=False, sort=False):
         
     return imglist
 
-def find_all_files_recursive(tgt_dir: Union[List, str], ext: Union[List, set], exclude_dirs=None):
-    if isinstance(tgt_dir, str):
-        tgt_dir = [tgt_dir]
-    
-    if exclude_dirs is None:
-        exclude_dirs = set()
-
-    filelst = []
-    for d in tgt_dir:
-        for root, _, files in os.walk(d):
-            if osp.basename(root) in exclude_dirs:
-                continue
-            for f in files:
-                if Path(f).suffix.lower() in ext:
-                    filelst.append(osp.join(root, f))
-    
-    return filelst
-
 def imread(imgpath, read_type=cv2.IMREAD_COLOR):
     if not osp.exists(imgpath):
         return None
-    # img = cv2.imdecode(np.fromfile(imgpath, dtype=np.uint8), read_type)
-    img = np.array(Image.open(imgpath).convert('RGB'))
-    if read_type == cv2.IMREAD_GRAYSCALE:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    else:   
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    img = cv2.imdecode(np.fromfile(imgpath, dtype=np.uint8), read_type)
     return img
 
 def imwrite(img_path, img, ext='.png', quality=100):

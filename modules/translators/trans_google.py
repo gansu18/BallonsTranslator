@@ -302,11 +302,6 @@ class TransGoogle(BaseTranslator):
         self.lang_map['Español'] = 'es'
         self.lang_map['Türk dili'] = 'tr'
         self.lang_map['Indonesia'] = 'id'
-        self.lang_map['Thai'] = 'th'
-        self.lang_map['Arabic'] = 'ar'
-        self.lang_map['Malayalam'] = 'ml'
-        self.lang_map['Tamil'] = 'ta'
-        self.lang_map['Hindi'] = 'hi'
 
         self.googletrans = GoogleTranslator()
         

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Union
+from typing import List, Union, Tuple
 import os
 
 from qtpy.QtWidgets import QSlider, QMenu, QGraphicsScene, QGraphicsView, QGraphicsSceneDragDropEvent, QGraphicsRectItem, QGraphicsItem, QScrollBar, QGraphicsPixmapItem, QGraphicsSceneMouseEvent, QGraphicsSceneContextMenuEvent, QRubberBand
@@ -11,19 +11,30 @@ try:
 except:
     from qtpy.QtGui import QUndoStack, QUndoCommand
 
-from .misc import ndarray2pixmap, QKEY, QNUMERIC_KEYS, ARROWKEY2DIRECTION
+from .misc import ndarray2pixmap
+from .config_proj import ProjImgTrans
 from .textitem import TextBlkItem, TextBlock
 from .texteditshapecontrol import TextBlkShapeControl
-from .custom_widget import ScrollBar, FadeLabel
+from .stylewidgets import FadeLabel, ScrollBar
 from .image_edit import ImageEditMode, DrawingLayer, StrokeImgItem
 from .page_search_widget import PageSearchWidget
 from utils import shared as C
 from utils.config import pcfg
-from utils.proj_imgtrans import ProjImgTrans
 
-CANVAS_SCALE_MAX = 10.0
-CANVAS_SCALE_MIN = 0.01
+CANVAS_SCALE_MAX = 3.0
+CANVAS_SCALE_MIN = 0.1
 CANVAS_SCALE_SPEED = 0.1
+
+
+QKEY = Qt.Key
+QNUMERIC_KEYS = {QKEY.Key_0:0,QKEY.Key_1:1,QKEY.Key_2:2,QKEY.Key_3:3,QKEY.Key_4:4,QKEY.Key_5:5,QKEY.Key_6:6,QKEY.Key_7:7,QKEY.Key_8:8,QKEY.Key_9:9}
+
+ARROWKEY2DIRECTION = {
+    QKEY.Key_Left: QPointF(-1., 0.),
+    QKEY.Key_Right: QPointF(1., 0.),
+    QKEY.Key_Up: QPointF(0., -1.),
+    QKEY.Key_Down: QPointF(0., 1.),
+}
 
 class MoveByKeyCommand(QUndoCommand):
     def __init__(self, blkitems: List[TextBlkItem], direction: QPointF, shape_ctrl: TextBlkShapeControl) -> None:
@@ -72,11 +83,13 @@ class CustomGV(QGraphicsView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.scrollbar_h = ScrollBar(Qt.Orientation.Horizontal, self, fadeout=True)
-        self.scrollbar_v = ScrollBar(Qt.Orientation.Vertical, self, fadeout=True)
+        ScrollBar(Qt.Orientation.Horizontal, self, fadeout=True)
+        ScrollBar(Qt.Orientation.Vertical, self, fadeout=True)
 
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        # self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
     def wheelEvent(self, event : QWheelEvent) -> None:
         # qgraphicsview always scroll content according to wheelevent
@@ -157,7 +170,7 @@ class Canvas(QGraphicsScene):
     finish_painting = Signal(StrokeImgItem)
     finish_erasing = Signal(StrokeImgItem)
     delete_textblks = Signal(int)
-    copy_textblks = Signal()
+    copy_textblks = Signal(QPointF)
     paste_textblks = Signal(QPointF)
     copy_src_signal = Signal()
     paste_src_signal = Signal()
@@ -165,7 +178,6 @@ class Canvas(QGraphicsScene):
     format_textblks = Signal()
     layout_textblks = Signal()
     reset_angle = Signal()
-    squeeze_blk = Signal()
 
     run_blktrans = Signal(int)
 
@@ -179,8 +191,6 @@ class Canvas(QGraphicsScene):
     painting_shape = 0
     erasing_pen = QPen()
     image_edit_mode = ImageEditMode.NONE
-
-    # weird sometimes qt can't catch altmodifier: arow keys+alt
     alt_pressed = False
     scale_tool_mode = False
 
@@ -188,9 +198,9 @@ class Canvas(QGraphicsScene):
     proj_savestate_changed = Signal(bool)
     textstack_changed = Signal()
     drop_open_folder = Signal(str)
+
     context_menu_requested = Signal(QPoint, bool)
     incanvas_selection_changed = Signal()
-    switch_text_item = Signal(int, QKeyEvent)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -232,7 +242,9 @@ class Canvas(QGraphicsScene):
         self.rubber_band_origin = None
 
         self.draw_undo_stack = QUndoStack(self)
+        self.draw_undo_stack.indexChanged.connect(self.on_drawstack_changed)
         self.text_undo_stack = QUndoStack(self)
+        self.text_undo_stack.indexChanged.connect(self.on_textstack_changed)
         self.saved_drawundo_step = 0
         self.saved_textundo_step = 0
 
@@ -279,8 +291,6 @@ class Canvas(QGraphicsScene):
 
         self.saved_textundo_step = 0
         self.saved_drawundo_step = 0
-        self.num_pushed_textstep = 0
-        self.num_pushed_drawstep = 0
 
         self.clipboard_blks: List[TextBlock] = []
 
@@ -292,10 +302,6 @@ class Canvas(QGraphicsScene):
 
         self.textlayer_trans_slider: QSlider = None
         self.originallayer_trans_slider: QSlider = None
-
-    def on_switch_item(self, switch_delta: int, key_event: QKeyEvent = None):
-        if self.textEditMode():
-            self.switch_text_item.emit(switch_delta, key_event)
 
     def img_window_size(self):
         if self.imgtrans_proj.inpainted_valid:
@@ -338,57 +344,27 @@ class Canvas(QGraphicsScene):
     def scaleBy(self, value: float):
         self.scaleImage(value)
 
-    def _set_scene_scale(self, scale: float):
-        self.scale_factor = scale
-        self.baseLayer.setScale(scale)
-        self.setSceneRect(0, 0, self.baseLayer.sceneBoundingRect().width(), self.baseLayer.sceneBoundingRect().height())
-
     def render_result_img(self):
-
-        self.inpaintLayer.hide()
-        tlayer_opacity_before = self.textLayer.opacity()
-        tlayer_visible = self.textLayer.isVisible()
-        if tlayer_opacity_before != 1:
-            self.textLayer.setOpacity(1)
-        if not tlayer_visible:
-            self.textLayer.show()
-        scale_before = self.scale_factor
-        if scale_before != 1:
-            hb_pos = self.hscroll_bar.value()
-            vb_pos = self.vscroll_bar.value()
-            self._set_scene_scale(1)
 
         self.clearSelection()
         if self.textEditMode() and self.txtblkShapeControl.blk_item is not None:
-            blk_item = self.txtblkShapeControl.blk_item
-            if blk_item.is_editting():
-                blk_item.endEdit(keep_focus=False)
-            if blk_item.isSelected():
-                blk_item.setSelected(False)
+            if self.txtblkShapeControl.blk_item.is_editting():
+                self.txtblkShapeControl.blk_item.endEdit()
+        
+        ipainted_layer_pixmap = ndarray2pixmap(self.imgtrans_proj.inpainted_array)
+        old_ilayer_pixmap = self.inpaintLayer.pixmap()
+        self.inpaintLayer.setPixmap(ipainted_layer_pixmap)
 
-        result = ndarray2pixmap(self.imgtrans_proj.inpainted_array, return_qimg=True)
-        canvas_sz = self.img_window_size()
+        result = QImage(self.img_window_size(), QImage.Format.Format_ARGB32)
         painter = QPainter(result)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        rect = QRectF(0, 0, canvas_sz.width(), canvas_sz.height())
-        self.render(painter, rect, rect)   #  produce blurred result if target/source rect not specified #320
+        self.render(painter)
         painter.end()
         
-        if tlayer_opacity_before != 1:
-            self.textLayer.setOpacity(tlayer_opacity_before)
-        if not tlayer_visible:
-            self.textLayer.hide()
-        if scale_before != 1:
-            self._set_scene_scale(scale_before)
-            if self.hscroll_bar.value() != hb_pos:
-                self.hscroll_bar.setValue(hb_pos)
-            if self.vscroll_bar.value() != vb_pos:
-                self.vscroll_bar.setValue(vb_pos)
-        self.inpaintLayer.show()
-
+        self.inpaintLayer.setPixmap(old_ilayer_pixmap)
+        
         return result
-    
+
     def updateLayers(self):
         
         if not self.imgtrans_proj.img_valid:
@@ -438,6 +414,8 @@ class Canvas(QGraphicsScene):
         s_f = self.scale_factor * factor
         s_f = np.clip(s_f, CANVAS_SCALE_MIN, CANVAS_SCALE_MAX)
 
+        sbr = self.baseLayer.sceneBoundingRect()
+        self.old_size = sbr.size()
         scale_changed = self.scale_factor != s_f
         self.scale_factor = s_f
         self.baseLayer.setScale(self.scale_factor)
@@ -476,28 +454,8 @@ class Canvas(QGraphicsScene):
         if self.hasFocus() and not self.block_selection_signal:
             self.incanvas_selection_changed.emit()
 
-    def keyReleaseEvent(self, event: QKeyEvent) -> None:
-        if event.key() == QKEY.Key_Alt:
-            self.alt_pressed = False
-        return super().keyReleaseEvent(event)
-
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
-
-        if key == QKEY.Key_Alt:
-            self.alt_pressed = True
-
-        modifiers = event.modifiers()
-        if (modifiers == Qt.KeyboardModifier.AltModifier or self.alt_pressed) and \
-            not key == QKEY.Key_Alt and \
-                self.editing_textblkitem is None:
-            if key in {QKEY.Key_W, QKEY.Key_A, QKEY.Key_Left, QKEY.Key_Up}:
-                self.on_switch_item(-1, event)
-                return
-            elif key in {QKEY.Key_S, QKEY.Key_D, QKEY.Key_Right, QKEY.Key_Down}:
-                self.on_switch_item(1, event)
-                return
-
         if self.editing_textblkitem is not None:
             return super().keyPressEvent(event)
         elif key in ARROWKEY2DIRECTION:
@@ -551,16 +509,11 @@ class Canvas(QGraphicsScene):
         self.creating_textblock = False
         self.gv.setCursor(Qt.CursorShape.ArrowCursor)
         self.txtblkShapeControl.hide()
-        textblk_created = False
-        rect = self.txtblkShapeControl.rect()
         if self.creating_normal_rect:
-            self.end_create_rect.emit(rect, btn)
+            self.end_create_rect.emit(self.txtblkShapeControl.rect(), btn)
             self.txtblkShapeControl.showControls()
         else:
-            if rect.width() > 1 and rect.height() > 1:
-                self.end_create_textblock.emit(rect)
-                textblk_created = True
-        return textblk_created
+            self.end_create_textblock.emit(self.txtblkShapeControl.rect())
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if self.mid_btn_pressed:
@@ -676,16 +629,15 @@ class Canvas(QGraphicsScene):
         Qt.MouseButton.LeftButton
         if btn == Qt.MouseButton.MiddleButton:
             self.mid_btn_pressed = False
-        textblk_created = False
         if self.creating_textblock:
             tgt = 0 if btn == Qt.MouseButton.LeftButton else 1
-            textblk_created = self.endCreateTextblock(btn=tgt)
+            self.endCreateTextblock(btn=tgt)
         if btn == Qt.MouseButton.RightButton:
             if self.stroke_img_item is not None:
                 self.finish_erasing.emit(self.stroke_img_item)
-            if self.textEditMode() and not textblk_created:
+            if self.textEditMode():
                 self.context_menu_requested.emit(event.screenPos(), False)
-        if btn == Qt.MouseButton.LeftButton:
+        elif btn == Qt.MouseButton.LeftButton:
             if self.stroke_img_item is not None:
                 self.finish_painting.emit(self.stroke_img_item)
             elif self.scale_tool_mode:
@@ -780,7 +732,6 @@ class Canvas(QGraphicsScene):
             format_act = menu.addAction(self.tr("Apply font formatting"))
             layout_act = menu.addAction(self.tr("Auto layout"))
             angle_act = menu.addAction(self.tr("Reset Angle"))
-            squeeze_act = menu.addAction(self.tr("Squeeze"))
             menu.addSeparator()
             translate_act = menu.addAction(self.tr("translate"))
             ocr_act = menu.addAction(self.tr("OCR"))
@@ -795,9 +746,9 @@ class Canvas(QGraphicsScene):
             elif rst == delete_recover_act:
                 self.delete_textblks.emit(1)
             elif rst == copy_act:
-                self.on_copy()
+                self.on_copy(pos.toPointF())
             elif rst == paste_act:
-                self.on_paste()
+                self.on_paste(pos.toPointF())
             elif rst == copy_src_act:
                 self.copy_src_signal.emit()
             elif rst == paste_src_act:
@@ -808,8 +759,6 @@ class Canvas(QGraphicsScene):
                 self.layout_textblks.emit()
             elif rst == angle_act:
                 self.reset_angle.emit()
-            elif rst == squeeze_act:
-                self.squeeze_blk.emit()
             elif rst == translate_act:
                 self.run_blktrans.emit(-1)
             elif rst == ocr_act:
@@ -834,10 +783,12 @@ class Canvas(QGraphicsScene):
             else:
                 self.paste_textblks.emit(p)
 
-    def on_copy(self):
+    def on_copy(self, p: QPointF = None):
         if self.textEditMode():
             if self.have_selected_blkitem:
-                self.copy_textblks.emit()
+                if p is None:
+                    p = self.scene_cursor_pos()
+                self.copy_textblks.emit(p)
 
     def hide_rubber_band(self):
         if self.rubber_band.isVisible():
@@ -849,9 +800,6 @@ class Canvas(QGraphicsScene):
 
     def on_activation_changed(self):
         self.clear_states()
-        for textitem in self.selected_text_items():
-            if textitem.isEditing():
-                self.editing_textblkitem = textitem
 
     def clear_states(self):
         self.alt_pressed = False
@@ -886,79 +834,39 @@ class Canvas(QGraphicsScene):
             return self.draw_undo_stack
         return None
 
-    def push_undo_command(self, command: QUndoCommand, update_pushed_step=True):
-        if self.textEditMode():
-            self.push_text_command(command, update_pushed_step)
-        elif self.drawMode():
-            self.push_draw_command(command, update_pushed_step)
-        else:
-            return
+    def push_undo_command(self, command: QUndoCommand):
+        undo_stack = self.get_active_undostack()
+        if undo_stack is not None:
+            undo_stack.push(command)
 
-    def push_draw_command(self, command: QUndoCommand, update_pushed_step=True):
-        if command is not None:
-            self.draw_undo_stack.push(command)
-        if update_pushed_step:
-            self.num_pushed_drawstep += 1
-            self.on_drawstack_changed()
-
-    def push_text_command(self, command: QUndoCommand, update_pushed_step=True):
-        if command is not None:
-            self.text_undo_stack.push(command)
-        if update_pushed_step:
-            self.num_pushed_textstep += 1
-            self.on_textstack_changed()
-
-    def on_drawstack_changed(self):
-        if self.num_pushed_drawstep != self.saved_drawundo_step:
+    def on_drawstack_changed(self, index: int):
+        if index != self.saved_drawundo_step:
             self.setProjSaveState(True)
-        elif self.num_pushed_textstep == self.saved_textundo_step:
+        elif self.text_undo_stack.index() == self.saved_textundo_step:
             self.setProjSaveState(False)
 
-    def on_textstack_changed(self):
-        if self.num_pushed_textstep != self.saved_textundo_step:
+    def on_textstack_changed(self, index: int):
+        if index != self.saved_textundo_step:
             self.setProjSaveState(True)
-        elif self.num_pushed_drawstep == self.saved_drawundo_step:
+        elif self.draw_undo_stack.index() == self.saved_drawundo_step:
             self.setProjSaveState(False)
         self.textstack_changed.emit()
 
     def redo_textedit(self):
-        self.num_pushed_textstep += 1
         self.text_undo_stack.redo()
 
     def undo_textedit(self):
-        if self.num_pushed_textstep > 0:
-            self.num_pushed_textstep -= 1
         self.text_undo_stack.undo()
 
     def redo(self):
-        if self.textEditMode():
-            undo_stack = self.text_undo_stack
-            self.num_pushed_textstep += 1
-            self.on_textstack_changed()
-        elif self.drawMode():
-            undo_stack = self.draw_undo_stack
-            self.num_pushed_drawstep += 1
-            self.on_drawstack_changed()
-        else:
-            return
+        undo_stack = self.get_active_undostack()
         if undo_stack is not None:
             undo_stack.redo()
             if undo_stack == self.text_undo_stack:
                 self.txtblkShapeControl.updateBoundingRect()
 
     def undo(self):
-        if self.textEditMode():
-            undo_stack = self.text_undo_stack
-            if self.num_pushed_textstep > 0:
-                self.num_pushed_textstep -= 1
-            self.on_textstack_changed()
-        elif self.drawMode():
-            undo_stack = self.draw_undo_stack
-            if self.num_pushed_drawstep > 0:
-                self.num_pushed_drawstep -= 1
-            self.on_drawstack_changed()
-        else:
-            return
+        undo_stack = self.get_active_undostack()
         if undo_stack is not None:
             undo_stack.undo()
             if undo_stack == self.text_undo_stack:
@@ -968,28 +876,24 @@ class Canvas(QGraphicsScene):
         if update_saved_step:
             self.saved_drawundo_step = 0
             self.saved_textundo_step = 0
-            self.num_pushed_textstep = 0
-            self.num_pushed_drawstep = 0
         self.draw_undo_stack.clear()
         self.text_undo_stack.clear()
 
     def clear_text_stack(self):
-        self.num_pushed_textstep = 0
         self.text_undo_stack.clear()
 
     def clear_draw_stack(self):
-        self.num_pushed_drawstep = 0
         self.draw_undo_stack.clear()
 
     def update_saved_undostep(self):
-        self.saved_drawundo_step = self.num_pushed_drawstep
-        self.saved_textundo_step = self.num_pushed_textstep
+        self.saved_drawundo_step = self.draw_undo_stack.index()
+        self.saved_textundo_step = self.text_undo_stack.index()
 
     def text_change_unsaved(self) -> bool:
-        return self.saved_textundo_step != self.num_pushed_textstep
+        return self.saved_textundo_step != self.text_undo_stack.index()
 
     def draw_change_unsaved(self) -> bool:
-        return self.saved_drawundo_step != self.num_pushed_drawstep
+        return self.saved_drawundo_step != self.draw_undo_stack.index()
 
     def prepareClose(self):
         self.blockSignals(True)

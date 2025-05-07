@@ -1,14 +1,25 @@
 from typing import List, Union, Tuple
 
-from qtpy.QtWidgets import QPushButton, QKeySequenceEdit, QLayout, QGridLayout, QHBoxLayout, QVBoxLayout, QTreeView, QWidget, QLabel, QSizePolicy, QSpacerItem, QCheckBox, QSplitter, QScrollArea, QLineEdit
+from qtpy.QtWidgets import QKeySequenceEdit, QLayout, QGridLayout, QHBoxLayout, QVBoxLayout, QTreeView, QWidget, QLabel, QSizePolicy, QSpacerItem, QCheckBox, QSplitter, QScrollArea, QGroupBox, QLineEdit
 from qtpy.QtCore import Qt, Signal, QSize, QEvent, QItemSelection
-from qtpy.QtGui import QStandardItem, QStandardItemModel, QMouseEvent, QFont, QIntValidator, QValidator, QFocusEvent
+from qtpy.QtGui import QStandardItem, QStandardItemModel, QMouseEvent, QFont, QColor, QPalette, QIntValidator, QValidator, QFocusEvent
+from qtpy import API
 
-from .custom_widget import ConfigComboBox, Widget
-from utils.config import pcfg
 from utils import shared as C
+
+# nuitka seems to require import QtCore explicitly 
+if C.FLAG_QT6:
+    if API == 'pyside6':
+        from PySide6 import QtCore
+    else:
+        from PyQt6 import QtCore
+else:
+    from PyQt5 import QtCore
+
+from .stylewidgets import Widget, ConfigComboBox
+from utils.config import pcfg
 from utils.shared import CONFIG_FONTSIZE_CONTENT, CONFIG_FONTSIZE_HEADER, CONFIG_FONTSIZE_TABLE, CONFIG_COMBOBOX_SHORT, CONFIG_COMBOBOX_LONG, CONFIG_COMBOBOX_MIDEAN
-from .module_parse_widgets import InpaintConfigPanel, TextDetectConfigPanel, TranslatorConfigPanel, OCRConfigPanel
+from .dlconfig_parse_widgets import InpaintConfigPanel, TextDetectConfigPanel, TranslatorConfigPanel, OCRConfigPanel
 
 class CustomIntValidator(QIntValidator):
 
@@ -41,8 +52,7 @@ class CustomIntValidator(QIntValidator):
             d = max(d, self.bottom())
             s = str(d)
         return (QValidator.State.Acceptable, s, pos)
-
-
+    
 class PercentageLineEdit(QLineEdit):
 
     finish_edited = Signal(str)
@@ -68,6 +78,7 @@ class PercentageLineEdit(QLineEdit):
         return super().focusOutEvent(e)
 
 
+
 class ConfigTextLabel(QLabel):
     def __init__(self, text: str, fontsize: int, font_weight: int = None, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -79,6 +90,7 @@ class ConfigTextLabel(QLabel):
         self.setFont(font)
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         self.setOpenExternalLinks(True)
+        # self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
     def setActiveBackground(self):
         self.setStyleSheet("background-color:rgba(30, 147, 229, 51);")
@@ -133,25 +145,6 @@ def combobox_with_label(sel: List[str], name: str, discription: str = None, vert
         layout.addWidget(ConfigTextLabel(name, CONFIG_FONTSIZE_CONTENT, QFont.Weight.Normal))
         layout.addWidget(combox)
         return combox, target_block
-    
-def checkbox_with_label(name: str, discription: str = None, target_block: QWidget = None):
-    checkbox = QCheckBox()
-    if discription is not None:
-        font = checkbox.font()
-        font.setPointSizeF(CONFIG_FONTSIZE_CONTENT * 0.8)
-        checkbox.setFont(font)
-        checkbox.setText(discription)
-        vertical_layout = True
-    else:
-        vertical_layout = False
-
-    if target_block is None:
-        sublock = ConfigSubBlock(checkbox, name, vertical_layout=vertical_layout)
-        if vertical_layout is False:
-            sublock.layout().addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding))
-        target_block = sublock
-    return checkbox, target_block
-    
 
 
 class ConfigBlock(Widget):
@@ -203,10 +196,23 @@ class ConfigBlock(Widget):
         self.addSublock(sublock)
         return sublock
 
-    def addCheckBox(self, name: str, discription: str = None, target_block: ConfigSubBlock = None) -> QCheckBox:
-        checkbox, sublock = checkbox_with_label(name, discription, target_block)
-        if target_block is None:
+    def addCheckBox(self, name: str, discription: str = None, sublock: ConfigSubBlock = None) -> QCheckBox:
+        checkbox = QCheckBox()
+        if discription is not None:
+            font = checkbox.font()
+            font.setPointSizeF(CONFIG_FONTSIZE_CONTENT * 0.8)
+            checkbox.setFont(font)
+            checkbox.setText(discription)
+            vertical_layout = True
+        else:
+            vertical_layout = False
+        if sublock is None:
+            sublock = ConfigSubBlock(checkbox, name, vertical_layout=vertical_layout)
+            if vertical_layout is False:
+                sublock.layout().addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding))
             self.addSublock(sublock)
+        else:
+            sublock.layout().addWidget(checkbox)
         return checkbox, sublock
 
     def getSubBlockbyIdx(self, idx: int) -> ConfigSubBlock:
@@ -338,13 +344,10 @@ class ConfigTable(QTreeView):
 class ConfigPanel(Widget):
 
     save_config = Signal()
-    unload_models = Signal()
-    reload_textstyle = Signal(bool)
-    show_only_custom_font = Signal(bool)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.setObjectName("ConfigPanel")
+        
         self.configTable = ConfigTable()
         self.configTable.tableitem_pressed.connect(self.onTableItemPressed)
         self.configContent = ConfigContent()
@@ -356,7 +359,7 @@ class ConfigPanel(Widget):
         label_inpaint = self.tr('Inpaint')
         label_translator = self.tr('Translator')
         label_startup = self.tr('Startup')
-        label_typesetting = self.tr('Typesetting')
+        label_lettering = self.tr('Lettering')
         label_save = self.tr('Save')
         label_saladict = self.tr('SalaDict')
     
@@ -368,28 +371,15 @@ class ConfigPanel(Widget):
         ])
         generalTableItem.appendRows([
             TableItem(label_startup, CONFIG_FONTSIZE_TABLE),
-            TableItem(label_typesetting, CONFIG_FONTSIZE_TABLE),
+            TableItem(label_lettering, CONFIG_FONTSIZE_TABLE),
             TableItem(label_save, CONFIG_FONTSIZE_TABLE),
             TableItem(label_saladict, CONFIG_FONTSIZE_TABLE),
         ])
-        
-        self.load_model_checker, msublock = checkbox_with_label(self.tr('Load models on demand'), discription=self.tr('Load models on demand to save memory.'))
-        self.load_model_checker.stateChanged.connect(self.on_load_model_changed)
-        dlConfigPanel.vlayout.addWidget(msublock)
-        self.empty_runcache_checker, msublock = checkbox_with_label(self.tr('Empty cache after RUN'), discription=self.tr('Empty cache after RUN to save memory.'))
-        dlConfigPanel.vlayout.addWidget(msublock)
-        self.empty_runcache_checker.stateChanged.connect(self.on_runcache_changed)
-        self.unload_model_btn = QPushButton(parent=self)
-        self.unload_model_btn.setFixedWidth(500)
-        self.unload_model_btn.setText(self.tr('Unload All Models'))
-        self.unload_model_btn.clicked.connect(self.unload_models)
-        msublock.layout().addWidget(self.unload_model_btn)
 
         dlConfigPanel.addTextLabel(label_text_det)
         self.detect_config_panel = TextDetectConfigPanel(self.tr('Detector'), scrollWidget=self)
         self.detect_sub_block = dlConfigPanel.addBlockWidget(self.detect_config_panel)
-        self.detect_config_panel.keep_existing_checker.clicked.connect(self.on_keepline_clicked)
-
+        
         dlConfigPanel.addTextLabel(label_text_ocr)
         self.ocr_config_panel = OCRConfigPanel(self.tr('OCR'), scrollWidget=self)
         self.ocr_sub_block = dlConfigPanel.addBlockWidget(self.ocr_config_panel)
@@ -406,7 +396,7 @@ class ConfigPanel(Widget):
         self.open_on_startup_checker, _ = generalConfigPanel.addCheckBox(self.tr('Reopen last project on startup'))
         self.open_on_startup_checker.stateChanged.connect(self.on_open_onstartup_changed)
 
-        generalConfigPanel.addTextLabel(label_typesetting)
+        generalConfigPanel.addTextLabel(label_lettering)
         dec_program_str = self.tr('decide by program')
         use_global_str = self.tr('use global setting')
 
@@ -421,50 +411,42 @@ class ConfigPanel(Widget):
         self.let_fntsize_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Font Size'), parent=self, insert_stretch=True)
         global_fntfmt_layout.addWidget(sublock, 0, 0)
 
-        self.let_fntsize_combox.activated.connect(self.on_fntsize_flag_changed)
+        self.let_fntsize_combox.currentIndexChanged.connect(self.on_fntsize_flag_changed)
         self.let_fntstroke_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Stroke Size'), parent=self, insert_stretch=True)
-        self.let_fntstroke_combox.activated.connect(self.on_fntstroke_flag_changed)
+        self.let_fntstroke_combox.currentIndexChanged.connect(self.on_fntstroke_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 0, 1)
         
         self.let_fntcolor_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Font Color'), parent=self, insert_stretch=True)
-        self.let_fntcolor_combox.activated.connect(self.on_fontcolor_flag_changed)
+        self.let_fntcolor_combox.currentIndexChanged.connect(self.on_fontcolor_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 1, 0)
         self.let_fnt_scolor_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Stroke Color'), parent=self, insert_stretch=True)
-        self.let_fnt_scolor_combox.activated.connect(self.on_font_scolor_flag_changed)
+        self.let_fnt_scolor_combox.currentIndexChanged.connect(self.on_font_scolor_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 1, 1)
 
         self.let_effect_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Effect'), parent=self, insert_stretch=True)
-        self.let_effect_combox.activated.connect(self.on_effect_flag_changed)
+        self.let_effect_combox.currentIndexChanged.connect(self.on_effect_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 2, 0)
         self.let_alignment_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Alignment'), parent=self, insert_stretch=True)
-        self.let_alignment_combox.activated.connect(self.on_alignment_flag_changed)
+        self.let_alignment_combox.currentIndexChanged.connect(self.on_alignment_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 2, 1)
 
         self.let_writing_mode_combox, sublock = combobox_with_label([dec_program_str, use_global_str], self.tr('Writing-mode'), parent=self, insert_stretch=True)
-        self.let_writing_mode_combox.activated.connect(self.on_writing_mode_flag_changed)
+        self.let_writing_mode_combox.currentIndexChanged.connect(self.on_writing_mode_flag_changed)
         global_fntfmt_layout.addWidget(sublock, 3, 0)
-        self.let_family_combox, sublock = combobox_with_label([self.tr('Keep existing'), self.tr('Always use global setting')], self.tr('Font Family'), parent=self, insert_stretch=True)
-        self.let_family_combox.activated.connect(self.on_family_flag_changed)
-        global_fntfmt_layout.addWidget(sublock, 3, 1)
-
         global_fntfmt_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding), 0, 2)
 
         self.let_autolayout_checker, sublock = generalConfigPanel.addCheckBox(self.tr('Auto layout'), 
                 discription=self.tr('Split translation into multi-lines according to the extracted balloon region.'))
+        self.let_autolayout_adaptive_fntsize_checker, _ = generalConfigPanel.addCheckBox(None, self.tr('Adjust font size adaptively if it is set to \"decide by program.\"'), sublock=sublock)
+        self.let_autolayout_adaptive_fntsize_checker.stateChanged.connect(self.on_adaptive_fntsize_changed)
 
         self.let_autolayout_checker.stateChanged.connect(self.on_autolayout_changed)
         self.let_uppercase_checker, _ = generalConfigPanel.addCheckBox(self.tr('To uppercase'))
         self.let_uppercase_checker.stateChanged.connect(self.on_uppercase_changed)
 
-        self.let_textstyle_indep_checker, _ = generalConfigPanel.addCheckBox(self.tr('Independent text styles for each projects'))
-        self.let_textstyle_indep_checker.stateChanged.connect(self.on_textstyle_indep_changed)
-
-        self.let_show_only_custom_fonts, sublock = generalConfigPanel.addCheckBox(self.tr("Show only custom fonts"))
-        self.let_show_only_custom_fonts.stateChanged.connect(self.on_show_only_custom_fonts)
-
         generalConfigPanel.addTextLabel(label_save)
         self.rst_imgformat_combobox, imsave_sublock = generalConfigPanel.addCombobox(['PNG', 'JPG', 'WEBP'], self.tr('Result image format'))
-        self.rst_imgformat_combobox.activated.connect(self.on_rst_imgformat_changed)
+        self.rst_imgformat_combobox.currentIndexChanged.connect(self.on_rst_imgformat_changed)
         self.rst_imgquality_edit = PercentageLineEdit('100')
         self.rst_imgquality_edit.setFixedWidth(CONFIG_COMBOBOX_SHORT)
         self.rst_imgquality_edit.finish_edited.connect(self.on_edit_quality_changed)
@@ -506,17 +488,8 @@ class ConfigPanel(Widget):
 
         self.configTable.expandAll()
 
-    def on_load_model_changed(self):
-        pcfg.module.load_model_on_demand = self.load_model_checker.isChecked()
-
-    def on_runcache_changed(self):
-        pcfg.module.empty_runcache = self.empty_runcache_checker.isChecked()
-
-    def on_keepline_clicked(self):
-        pcfg.module.keep_exist_textlines = self.detect_config_panel.keep_existing_checker.isChecked()
-
     def addConfigBlock(self, header: str) -> Tuple[ConfigBlock, TableItem]:
-        cb = ConfigBlock(header, parent=self)
+        cb = ConfigBlock(header)
         cb.sublock_pressed.connect(self.onSublockPressed)
         self.configContent.addConfigBlock(cb)
         cb.setIndex(len(self.configContent.config_block_list)-1)
@@ -542,12 +515,11 @@ class ConfigPanel(Widget):
     def on_autolayout_changed(self):
         pcfg.let_autolayout_flag = self.let_autolayout_checker.isChecked()
 
+    def on_adaptive_fntsize_changed(self):
+        pcfg.let_autolayout_adaptive_fntsz = self.let_autolayout_adaptive_fntsize_checker.isChecked()
+
     def on_uppercase_changed(self):
         pcfg.let_uppercase_flag = self.let_uppercase_checker.isChecked()
-
-    def on_textstyle_indep_changed(self):
-        pcfg.let_textstyle_indep_flag = self.let_textstyle_indep_checker.isChecked()
-        self.reload_textstyle.emit(pcfg.let_textstyle_indep_flag)
 
     def on_rst_imgformat_changed(self):
         pcfg.imgsave_ext = '.' + self.rst_imgformat_combobox.currentText().lower()
@@ -579,15 +551,8 @@ class ConfigPanel(Widget):
     def on_writing_mode_flag_changed(self):
         pcfg.let_writing_mode_flag = self.let_writing_mode_combox.currentIndex()
 
-    def on_family_flag_changed(self):
-        pcfg.let_family_flag = self.let_family_combox.currentIndex()
-
     def on_effect_flag_changed(self):
         pcfg.let_fnteffect_flag = self.let_effect_combox.currentIndex()
-
-    def on_show_only_custom_fonts(self):
-        pcfg.let_show_only_custom_fonts_flag = self.let_show_only_custom_fonts.isChecked()
-        self.show_only_custom_font.emit(pcfg.let_show_only_custom_fonts_flag)
 
     def focusOnTranslator(self):
         idx0, idx1 = self.trans_sub_block.idx0, self.trans_sub_block.idx1
@@ -596,16 +561,6 @@ class ConfigPanel(Widget):
 
     def focusOnInpaint(self):
         idx0, idx1 = self.inpaint_sub_block.idx0, self.inpaint_sub_block.idx1
-        self.configTable.setCurrentItem(idx0, idx1)
-        self.configTable.tableitem_pressed.emit(idx0, idx1)
-
-    def focusOnDetect(self):
-        idx0, idx1 = self.detect_sub_block.idx0, self.detect_sub_block.idx1
-        self.configTable.setCurrentItem(idx0, idx1)
-        self.configTable.tableitem_pressed.emit(idx0, idx1)
-
-    def focusOnOCR(self):
-        idx0, idx1 = self.ocr_sub_block.idx0, self.ocr_sub_block.idx1
         self.configTable.setCurrentItem(idx0, idx1)
         self.configTable.tableitem_pressed.emit(idx0, idx1)
 
@@ -619,26 +574,20 @@ class ConfigPanel(Widget):
         if pcfg.open_recent_on_startup:
             self.open_on_startup_checker.setChecked(True)
 
-        self.detect_config_panel.keep_existing_checker.setChecked(pcfg.module.keep_exist_textlines)
         self.let_effect_combox.setCurrentIndex(pcfg.let_fnteffect_flag)
         self.let_fntsize_combox.setCurrentIndex(pcfg.let_fntsize_flag)
         self.let_fntstroke_combox.setCurrentIndex(pcfg.let_fntstroke_flag)
         self.let_fntcolor_combox.setCurrentIndex(pcfg.let_fntcolor_flag)
         self.let_fnt_scolor_combox.setCurrentIndex(pcfg.let_fnt_scolor_flag)
         self.let_alignment_combox.setCurrentIndex(pcfg.let_alignment_flag)
-        self.let_family_combox.setCurrentIndex(pcfg.let_family_flag)
-        self.let_writing_mode_combox.setCurrentIndex(pcfg.let_writing_mode_flag)
         self.let_autolayout_checker.setChecked(pcfg.let_autolayout_flag)
+        self.let_autolayout_adaptive_fntsize_checker.setChecked(pcfg.let_autolayout_adaptive_fntsz)
         self.selectext_minimenu_checker.setChecked(pcfg.textselect_mini_menu)
         self.let_uppercase_checker.setChecked(pcfg.let_uppercase_flag)
-        self.let_textstyle_indep_checker.setChecked(pcfg.let_textstyle_indep_flag)
         self.saladict_shortcut.setKeySequence(pcfg.saladict_shortcut)
         self.searchurl_combobox.setCurrentText(pcfg.search_url)
         self.ocr_config_panel.restoreEmptyOCRChecker.setChecked(pcfg.restore_ocr_empty)
         self.rst_imgformat_combobox.setCurrentText(pcfg.imgsave_ext.replace('.', '').upper())
         self.rst_imgquality_edit.setText(str(pcfg.imgsave_quality))
-        self.load_model_checker.setChecked(pcfg.module.load_model_on_demand)
-        self.empty_runcache_checker.setChecked(pcfg.module.empty_runcache)
-        self.let_show_only_custom_fonts.setChecked(pcfg.let_show_only_custom_fonts_flag)
 
         self.blockSignals(False)
